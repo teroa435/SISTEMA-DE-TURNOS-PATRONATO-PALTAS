@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cita Confirmada</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+        h1 { font-size: 2.5em; color: #ffd93d; }
+        .paciente { font-size: 2em; font-weight: bold; margin: 20px 0; }
+        .fecha { font-size: 1.3em; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; }
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Cita Confirmada</h1>
+        <div class="paciente">👤 {{ paciente }}</div>
+        <div class="fecha">📅 Fecha: {{ fecha }}</div>
+        <p>Tu cita ha sido agendada exitosamente en el Patronato de Catacocha</p>
+        <a href="/" class="btn">Volver al inicio</a>
+    </div>
+</body>
+</html>
