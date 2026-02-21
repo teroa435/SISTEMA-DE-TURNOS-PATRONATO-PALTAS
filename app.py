@@ -1,8 +1,9 @@
 from flask import Flask, render_template
+from datetime import datetime
 
 app = Flask(__name__)
 
-# Ruta principal
+# Ruta principal - Página de inicio
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -10,20 +11,34 @@ def index():
 # Ruta dinámica para citas
 @app.route('/cita/<paciente>')
 def cita(paciente):
-    mensaje = f"Bienvenido/a {paciente}, su cita en el Patronato del Cantón Paltas ha sido agendada exitosamente."
-    return render_template('usuario.html', paciente=paciente, mensaje=mensaje)
+    fecha_actual = datetime.now().strftime("%d/%m/%Y")
+    return render_template('cita.html', paciente=paciente, fecha=fecha_actual)
 
-# Ruta adicional para información de servicios
+# Ruta para servicios
 @app.route('/servicios')
 def servicios():
-    servicios_lista = [
-        "Atención médica general",
-        "Odontología",
-        "Psicología",
-        "Nutrición",
-        "Asesoría legal"
+    return render_template('servicios.html')
+
+# Ruta para listado de citas
+@app.route('/citas')
+def citas():
+    # Simulación de citas (luego vendrán de base de datos)
+    citas_ejemplo = [
+        {'paciente': 'María González', 'fecha': '15/03/2024', 'servicio': 'Medicina General'},
+        {'paciente': 'Juan Pérez', 'fecha': '16/03/2024', 'servicio': 'Odontología'},
+        {'paciente': 'Ana Rodríguez', 'fecha': '17/03/2024', 'servicio': 'Trabajo Social'}
     ]
-    return render_template('servicios.html', servicios=servicios_lista)
+    return render_template('citas.html', citas=citas_ejemplo)
+
+# Ruta para contacto
+@app.route('/contacto')
+def contacto():
+    return render_template('contacto.html')
+
+# Ruta para acerca de
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

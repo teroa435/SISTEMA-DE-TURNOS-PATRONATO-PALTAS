@@ -1,49 +1,56 @@
-﻿<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cita Confirmada</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-align: center;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            max-width: 600px;
-            padding: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-        }
-        h1 { font-size: 2.5em; color: #ffd93d; }
-        .paciente { font-size: 2em; font-weight: bold; margin: 20px 0; }
-        .fecha { font-size: 1.3em; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; }
-        .btn {
-            display: inline-block;
-            padding: 12px 25px;
-            background: #ff6b6b;
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>✅ Cita Confirmada</h1>
-        <div class="paciente">👤 {{ paciente }}</div>
-        <div class="fecha">📅 Fecha: {{ fecha }}</div>
-        <p>Tu cita ha sido agendada exitosamente en el Patronato de Catacocha</p>
-        <a href="/" class="btn">Volver al inicio</a>
+{% extends "base.html" %}
+
+{% block title %}Cita Confirmada - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-lg border-success">
+            <div class="card-header bg-success text-white text-center py-3">
+                <h3 class="mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Cita Confirmada
+                </h3>
+            </div>
+            <div class="card-body text-center p-5">
+                <i class="fas fa-user-check fa-5x text-success mb-4"></i>
+                
+                <h2 class="card-title mb-4">¡Bienvenido, {{ paciente }}!</h2>
+                
+                <div class="alert alert-info">
+                    <p class="lead mb-0">Tu cita ha sido agendada exitosamente en el Patronato de Catacocha</p>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6 mx-auto">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5><i class="fas fa-calendar-alt me-2"></i>Fecha de la cita</h5>
+                                <p class="display-6">{{ fecha }}</p>
+                                <p class="text-muted">Presentarse 15 minutos antes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <p><i class="fas fa-map-marker-alt me-2"></i>Dirección: Calle Bolívar y Sucre, Catacocha</p>
+                    <p><i class="fas fa-phone me-2"></i>Informaciones: (07) 1234-5678</p>
+                </div>
+                
+                <hr class="my-4">
+                
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-2">
+                    <i class="fas fa-home me-2"></i>Volver al inicio
+                </a>
+                <a href="{{ url_for('citas') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-calendar me-2"></i>Ver mis citas
+                </a>
+            </div>
+            <div class="card-footer text-muted text-center">
+                <small>Por favor guarde esta confirmación para su cita</small>
+            </div>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

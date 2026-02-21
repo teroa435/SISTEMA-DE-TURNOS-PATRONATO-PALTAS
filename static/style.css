@@ -1,54 +1,90 @@
+/* Estilos personalizados para el Patronato de Catacocha */
+
 body {
-    background-color: #f8f9fa;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
 }
 
+/* Navbar personalizado */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Cards con efecto hover */
 .card {
-    border-radius: 15px;
+    transition: transform 0.3s, box-shadow 0.3s;
     border: none;
-    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .card:hover {
     transform: translateY(-5px);
-    transition: transform 0.3s ease;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
 }
 
+/* Botones personalizados */
 .btn-primary {
-    background-color: #0d6efd;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
     padding: 10px 20px;
-    border-radius: 8px;
+    font-weight: 500;
+    transition: transform 0.3s;
 }
 
 .btn-primary:hover {
-    background-color: #0b5ed7;
+    transform: scale(1.05);
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
 }
 
-h1, h2 {
-    color: #333;
+/* Footer */
+footer {
+    margin-top: auto;
 }
 
-.display-4 {
-    color: #0d6efd;
-    font-weight: bold;
+footer a:hover {
+    color: #ffd93d !important;
+    text-decoration: underline !important;
 }
 
-.text-primary {
-    color: #0d6efd !important;
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.alert-success {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
-    padding: 20px;
-    border-radius: 10px;
+main {
+    animation: fadeIn 0.5s ease-out;
 }
 
-code {
-    background-color: #f8f9fa;
-    padding: 5px 10px;
-    border-radius: 5px;
-    color: #d63384;
+/* Responsive */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+}
+
+/* Estilos para la página de citas */
+.cita-card {
+    border-left: 4px solid #667eea;
+}
+
+/* Formularios */
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }

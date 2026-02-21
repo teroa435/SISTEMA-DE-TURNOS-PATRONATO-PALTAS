@@ -1,51 +1,67 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Citas - Patronato Paltas</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <header class="my-4 text-center">
-            <h1 class="display-4">🏥 Sistema de Citas Médicas</h1>
-            <h2 class="text-primary">Patronato del Cantón Paltas</h2>
-            <p class="lead">"Comprometidos con tu salud y bienestar"</p>
-        </header>
+{% extends "base.html" %}
 
-        <div class="row mt-5">
-            <div class="col-md-6 mx-auto">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <h3 class="card-title text-center">Bienvenido al Sistema de Citas</h3>
-                        <p class="card-text text-center">
-                            Gestione sus citas médicas de manera rápida y eficiente
-                        </p>
-                        
-                        <div class="alert alert-info mt-4">
-                            <h5>📍 Ubicación:</h5>
-                            <p>Cantón Paltas, Provincia de Loja - Ecuador</p>
-                        </div>
+{% block title %}Inicio - Patronato de Catacocha{% endblock %}
 
-                        <div class="mt-4">
-                            <h5>Prueba nuestra ruta dinámica:</h5>
-                            <code>/cita/tu_nombre</code>
-                            <p class="text-muted mt-2">Ejemplo: <a href="/cita/María%20González">/cita/María González</a></p>
-                        </div>
-                    </div>
-                </div>
+{% block content %}
+<div class="row">
+    <div class="col-md-12 text-center mb-5">
+        <h1 class="display-4">🏛️ Sistema de Agendamiento de Citas</h1>
+        <p class="lead">Bienvenido al sistema oficial de gestión de citas del Patronato Municipal de Catacocha</p>
+        <hr class="my-4">
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-user-md fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Consulta Médica</h5>
+                <p class="card-text">Atención con médicos generales y especialistas.</p>
+                <a href="/cita/María" class="btn btn-primary">Agendar cita</a>
             </div>
         </div>
-
-        <footer class="mt-5 text-center text-muted">
-            <p>© 2024 Patronato del Cantón Paltas - Todos los derechos reservados</p>
-        </footer>
     </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-tooth fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Odontología</h5>
+                <p class="card-text">Cuidado dental profesional para toda la familia.</p>
+                <a href="/cita/Juan" class="btn btn-primary">Agendar cita</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="fas fa-heart fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Trabajo Social</h5>
+                <p class="card-text">Asesoría y apoyo para tu bienestar familiar.</p>
+                <a href="/cita/Ana" class="btn btn-primary">Solicitar cita</a>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<div class="row mt-5">
+    <div class="col-md-6">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5><i class="fas fa-clock me-2"></i>Horario de atención</h5>
+                <p class="mb-1">Lunes a Viernes: 8:00 AM - 5:00 PM</p>
+                <p>Sábados: 8:00 AM - 12:00 PM</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5><i class="fas fa-phone-alt me-2"></i>Emergencias</h5>
+                <p class="mb-1">Teléfono: 107</p>
+                <p>Celular: 099 123 4567</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
