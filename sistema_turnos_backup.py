@@ -5,26 +5,26 @@
 import os
 import sys
 from datetime import datetime
-from models import Paciente, Medico, Cita as Turno, InventarioCitas as InventarioTurnos
+from models import Paciente, Medico, Turno, InventarioTurnos
 from database import crear_base_datos, insertar_datos_prueba
 
 class SistemaTurnosConsole:
-    '''Clase principal del sistema con interfaz de consola'''
+    """Clase principal del sistema con interfaz de consola"""
     
     def __init__(self):
         self.inventario = None
         self.inicializar_sistema()
     
     def inicializar_sistema(self):
-        '''Inicializa la base de datos y carga el inventario'''
+        """Inicializa la base de datos y carga el inventario"""
         print("\n" + "="*60)
         print("🏛️  SISTEMA DE GESTIÓN DE TURNOS - PATRONATO DE CATACOCHA")
         print("="*60)
         
-        # Crear base de datos
+        # Crear base de datos si no existe
         crear_base_datos()
         
-        # Verificar si existe la base de datos
+        # Verificar si existe el archivo de base de datos
         if not os.path.exists('turnos.db'):
             respuesta = input("¿Desea insertar datos de prueba? (s/n): ")
             if respuesta.lower() == 's':
@@ -35,15 +35,15 @@ class SistemaTurnosConsole:
         print("✅ Sistema inicializado correctamente")
     
     def limpiar_pantalla(self):
-        '''Limpia la pantalla de la consola'''
+        """Limpia la pantalla de la consola"""
         os.system('cls' if os.name == 'nt' else 'clear')
     
     def pausar(self):
-        '''Pausa la ejecución hasta que el usuario presione Enter'''
+        """Pausa la ejecución hasta que el usuario presione Enter"""
         input("\nPresione Enter para continuar...")
     
     def mostrar_menu_principal(self):
-        '''Muestra el menú principal del sistema'''
+        """Muestra el menú principal del sistema"""
         self.limpiar_pantalla()
         print("\n" + "="*60)
         print("🏛️  PATRONATO DE CATACOCHA - SISTEMA DE TURNOS")
@@ -58,7 +58,7 @@ class SistemaTurnosConsole:
         print("-"*60)
     
     def menu_pacientes(self):
-        '''Menú de gestión de pacientes'''
+        """Menú de gestión de pacientes"""
         while True:
             self.limpiar_pantalla()
             print("\n" + "="*60)
@@ -91,7 +91,7 @@ class SistemaTurnosConsole:
                 self.pausar()
     
     def registrar_paciente(self):
-        '''Registra un nuevo paciente'''
+        """Registra un nuevo paciente"""
         self.limpiar_pantalla()
         print("\n📝 REGISTRO DE NUEVO PACIENTE")
         print("-"*40)
@@ -121,7 +121,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def buscar_pacientes(self):
-        '''Busca pacientes por criterio'''
+        """Busca pacientes por criterio"""
         self.limpiar_pantalla()
         print("\n🔍 BÚSQUEDA DE PACIENTES")
         print("-"*40)
@@ -143,7 +143,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def listar_pacientes(self):
-        '''Lista todos los pacientes'''
+        """Lista todos los pacientes"""
         self.limpiar_pantalla()
         print("\n📋 LISTA DE PACIENTES")
         print("-"*60)
@@ -154,7 +154,7 @@ class SistemaTurnosConsole:
                 print(f"  Nombre: {paciente.nombre_completo()}")
                 print(f"  Cédula: {paciente.cedula}")
                 print(f"  Teléfono: {paciente.telefono}")
-                print(f"  Turnos: {len(self.inventario.buscar_citas_por_paciente(paciente.id))}")
+                print(f"  Turnos: {len(self.inventario.buscar_turnos_por_paciente(paciente.id))}")
                 print("-"*30)
         else:
             print("  No hay pacientes registrados")
@@ -162,7 +162,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def actualizar_paciente(self):
-        '''Actualiza datos de un paciente'''
+        """Actualiza datos de un paciente"""
         self.limpiar_pantalla()
         print("\n✏️  ACTUALIZAR PACIENTE")
         print("-"*40)
@@ -205,7 +205,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def eliminar_paciente(self):
-        '''Elimina un paciente'''
+        """Elimina un paciente"""
         self.limpiar_pantalla()
         print("\n❌ ELIMINAR PACIENTE")
         print("-"*40)
@@ -217,7 +217,7 @@ class SistemaTurnosConsole:
                 print(f"\nPaciente: {paciente.nombre_completo()}")
                 
                 # Verificar turnos
-                turnos = self.inventario.buscar_citas_por_paciente(paciente_id)
+                turnos = self.inventario.buscar_turnos_por_paciente(paciente_id)
                 if turnos:
                     print(f"⚠️  Este paciente tiene {len(turnos)} turno(s) programados")
                 
@@ -232,7 +232,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def menu_medicos(self):
-        '''Menú de gestión de médicos'''
+        """Menú de gestión de médicos"""
         while True:
             self.limpiar_pantalla()
             print("\n" + "="*60)
@@ -259,7 +259,7 @@ class SistemaTurnosConsole:
                 self.pausar()
     
     def registrar_medico(self):
-        '''Registra un nuevo médico'''
+        """Registra un nuevo médico"""
         self.limpiar_pantalla()
         print("\n📝 REGISTRO DE NUEVO MÉDICO")
         print("-"*40)
@@ -282,6 +282,7 @@ class SistemaTurnosConsole:
         telefono = input("Teléfono [opcional]: ") or ""
         email = input("Email [opcional]: ") or ""
         
+        # Insertar directamente en la base de datos
         import sqlite3
         conn = sqlite3.connect('turnos.db')
         cursor = conn.cursor()
@@ -296,7 +297,7 @@ class SistemaTurnosConsole:
             medico_id = cursor.lastrowid
             print(f"✅ Médico registrado con ID: {medico_id}")
             
-            # Recargar inventario
+            # Recargar inventario para incluir el nuevo médico
             self.inventario.cargar_datos()
             
         except sqlite3.Error as e:
@@ -307,7 +308,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def buscar_medicos(self):
-        '''Busca médicos por criterio'''
+        """Busca médicos por criterio"""
         self.limpiar_pantalla()
         print("\n🔍 BÚSQUEDA DE MÉDICOS")
         print("-"*40)
@@ -334,7 +335,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def listar_medicos(self):
-        '''Lista todos los médicos'''
+        """Lista todos los médicos"""
         self.limpiar_pantalla()
         print("\n📋 LISTA DE MÉDICOS")
         print("-"*60)
@@ -352,7 +353,7 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def menu_turnos(self):
-        '''Menú de gestión de turnos'''
+        """Menú de gestión de turnos"""
         while True:
             self.limpiar_pantalla()
             print("\n" + "="*60)
@@ -388,17 +389,19 @@ class SistemaTurnosConsole:
                 self.pausar()
     
     def agendar_turno(self):
-        '''Agenda un nuevo turno'''
+        """Agenda un nuevo turno"""
         self.limpiar_pantalla()
         print("\n📝 AGENDAR NUEVO TURNO")
         print("-"*40)
         
+        # Verificar si hay pacientes
         if not self.inventario.pacientes:
             print("❌ No hay pacientes registrados")
             self.pausar()
             return
         
-        print("\nPacientes disponibles:")
+        # Mostrar lista de pacientes (primeros 5)
+        print("\nPacientes disponibles (mostrando primeros 5):")
         pacientes_lista = list(self.inventario.pacientes.values())[:5]
         for paciente in pacientes_lista:
             print(f"  {paciente.id}: {paciente.nombre_completo()}")
@@ -410,11 +413,13 @@ class SistemaTurnosConsole:
                 self.pausar()
                 return
             
+            # Verificar si hay médicos
             if not self.inventario.medicos:
                 print("❌ No hay médicos registrados")
                 self.pausar()
                 return
             
+            # Mostrar médicos
             print("\nMédicos disponibles:")
             for medico in self.inventario.medicos.values():
                 print(f"  {medico.id}: {medico.nombre_completo()} - {medico.especialidad}")
@@ -438,23 +443,25 @@ class SistemaTurnosConsole:
                 estado="Programado"
             )
             
-            turno_id = self.inventario.agregar_cita(turno)
+            turno_id = self.inventario.agregar_turno(turno)
             if turno_id:
                 print(f"\n✅ Turno agendado con ID: {turno_id}")
             
+        except ValueError:
+            print("❌ Error en el formato de los datos")
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Error inesperado: {e}")
         
         self.pausar()
     
     def buscar_turnos_por_fecha(self):
-        '''Busca turnos por fecha'''
+        """Busca turnos por fecha"""
         self.limpiar_pantalla()
         print("\n🔍 BÚSQUEDA DE TURNOS POR FECHA")
         print("-"*40)
         
         fecha = input("Ingrese fecha (YYYY-MM-DD): ")
-        resultados = self.inventario.buscar_citas_por_fecha(fecha)
+        resultados = self.inventario.buscar_turnos_por_fecha(fecha)
         
         if resultados:
             print(f"\n📋 Turnos para {fecha}:")
@@ -472,14 +479,14 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def buscar_turnos_por_paciente(self):
-        '''Busca turnos por paciente'''
+        """Busca turnos por paciente"""
         self.limpiar_pantalla()
         print("\n🔍 BÚSQUEDA DE TURNOS POR PACIENTE")
         print("-"*40)
         
         try:
             paciente_id = int(input("Ingrese ID del paciente: "))
-            resultados = self.inventario.buscar_citas_por_paciente(paciente_id)
+            resultados = self.inventario.buscar_turnos_por_paciente(paciente_id)
             
             if resultados:
                 paciente = self.inventario.pacientes.get(paciente_id)
@@ -498,18 +505,19 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def listar_turnos(self):
-        '''Lista todos los turnos'''
+        """Lista todos los turnos"""
         self.limpiar_pantalla()
         print("\n📋 LISTA DE TURNOS")
         print("-"*60)
         
-        if self.inventario.citas:
+        if self.inventario.turnos:
+            # Ordenar turnos por fecha y hora
             turnos_ordenados = sorted(
-                self.inventario.citas.values(),
+                self.inventario.turnos.values(),
                 key=lambda t: (t.fecha, t.hora)
             )
             
-            for turno in turnos_ordenados[:10]:
+            for turno in turnos_ordenados[:10]:  # Mostrar solo primeros 10
                 paciente = self.inventario.pacientes.get(turno.paciente_id)
                 medico = self.inventario.medicos.get(turno.medico_id)
                 
@@ -520,27 +528,27 @@ class SistemaTurnosConsole:
                 print(f"  Estado: {turno.estado}")
                 print("-"*30)
             
-            if len(self.inventario.citas) > 10:
-                print(f"... y {len(self.inventario.citas) - 10} turno(s) más")
+            if len(self.inventario.turnos) > 10:
+                print(f"... y {len(self.inventario.turnos) - 10} turno(s) más")
         else:
             print("  No hay turnos registrados")
         
         self.pausar()
     
     def actualizar_estado_turno(self):
-        '''Actualiza el estado de un turno'''
+        """Actualiza el estado de un turno"""
         self.limpiar_pantalla()
         print("\n✏️  ACTUALIZAR ESTADO DE TURNO")
         print("-"*40)
         
         try:
             turno_id = int(input("Ingrese ID del turno: "))
-            if turno_id not in self.inventario.citas:
+            if turno_id not in self.inventario.turnos:
                 print("❌ Turno no encontrado")
                 self.pausar()
                 return
             
-            turno = self.inventario.citas[turno_id]
+            turno = self.inventario.turnos[turno_id]
             print(f"\nTurno actual: {turno.fecha} {turno.hora} - {turno.estado}")
             
             print("\nEstados disponibles:")
@@ -550,7 +558,7 @@ class SistemaTurnosConsole:
             try:
                 opcion = int(input("\nSeleccione nuevo estado (1-6): "))
                 nuevo_estado = list(Turno.ESTADOS)[opcion - 1]
-                self.inventario.actualizar_estado_cita(turno_id, nuevo_estado)
+                self.inventario.actualizar_estado_turno(turno_id, nuevo_estado)
             except:
                 print("❌ Opción inválida")
         
@@ -560,22 +568,22 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def cancelar_turno(self):
-        '''Cancela un turno'''
+        """Cancela un turno"""
         self.limpiar_pantalla()
         print("\n❌ CANCELAR TURNO")
         print("-"*40)
         
         try:
             turno_id = int(input("Ingrese ID del turno a cancelar: "))
-            if turno_id in self.inventario.citas:
-                turno = self.inventario.citas[turno_id]
+            if turno_id in self.inventario.turnos:
+                turno = self.inventario.turnos[turno_id]
                 paciente = self.inventario.pacientes.get(turno.paciente_id)
                 print(f"\nTurno: {turno.fecha} {turno.hora}")
                 print(f"Paciente: {paciente.nombre_completo() if paciente else 'N/A'}")
                 
                 confirmar = input("¿Está seguro de cancelar? (s/n): ")
                 if confirmar.lower() == 's':
-                    self.inventario.cancelar_cita(turno_id)
+                    self.inventario.cancelar_turno(turno_id)
             else:
                 print("❌ Turno no encontrado")
         except ValueError:
@@ -584,22 +592,23 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def menu_reportes(self):
-        '''Menú de reportes y estadísticas'''
+        """Menú de reportes y estadísticas"""
         while True:
             self.limpiar_pantalla()
             print("\n" + "="*60)
             print("📊 REPORTES Y ESTADÍSTICAS")
             print("="*60)
             
+            # Mostrar estadísticas generales
             stats = self.inventario.estadisticas()
             print("\n📈 ESTADÍSTICAS GENERALES:")
             print(f"  Total pacientes: {stats['total_pacientes']}")
             print(f"  Total médicos: {stats['total_medicos']}")
-            print(f"  Total turnos: {stats['total_citas']}")
-            print(f"  Próximos turnos: {stats['proximas_citas']}")
+            print(f"  Total turnos: {stats['total_turnos']}")
+            print(f"  Próximos turnos: {stats['proximos_turnos']}")
             
             print("\n📊 TURNOS POR ESTADO:")
-            for estado, cantidad in stats['citas_por_estado'].items():
+            for estado, cantidad in stats['turnos_por_estado'].items():
                 print(f"  {estado}: {cantidad}")
             
             print("\n  1. 📋 Reporte de turnos por médico")
@@ -617,7 +626,7 @@ class SistemaTurnosConsole:
                 self.pausar()
     
     def reporte_turnos_por_medico(self):
-        '''Genera reporte de turnos por médico'''
+        """Genera reporte de turnos por médico"""
         self.limpiar_pantalla()
         print("\n📋 REPORTE DE TURNOS POR MÉDICO")
         print("-"*40)
@@ -630,7 +639,7 @@ class SistemaTurnosConsole:
                 return
             
             medico = self.inventario.medicos[medico_id]
-            turnos = self.inventario.reporte_citas_por_medico(medico_id)
+            turnos = self.inventario.reporte_turnos_por_medico(medico_id)
             
             print(f"\n📊 Turnos para {medico.nombre_completo()}:")
             if turnos:
@@ -648,13 +657,13 @@ class SistemaTurnosConsole:
         self.pausar()
     
     def mostrar_inventario_completo(self):
-        '''Muestra todo el inventario'''
+        """Muestra todo el inventario"""
         self.limpiar_pantalla()
         self.inventario.mostrar_todo()
         self.pausar()
     
     def ejecutar(self):
-        '''Ejecuta el bucle principal del sistema'''
+        """Ejecuta el bucle principal del sistema"""
         while True:
             self.mostrar_menu_principal()
             opcion = input("Seleccione una opción (1-6): ")
