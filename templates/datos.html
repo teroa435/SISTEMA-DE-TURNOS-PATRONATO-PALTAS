@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Datos Almacenados - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-database me-3"></i>Datos Almacenados
+        </h1>
+        <hr class="mb-4">
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="txt-tab" data-bs-toggle="tab" data-bs-target="#txt" type="button" role="tab">
+            <i class="fas fa-file-alt me-2"></i>TXT
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="json-tab" data-bs-toggle="tab" data-bs-target="#json" type="button" role="tab">
+            <i class="fas fa-file-code me-2"></i>JSON
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv" type="button" role="tab">
+            <i class="fas fa-file-csv me-2"></i>CSV
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sql-tab" data-bs-toggle="tab" data-bs-target="#sql" type="button" role="tab">
+            <i class="fas fa-database me-2"></i>SQLite (SQLAlchemy)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="myTabContent">
+    <!-- TXT -->
+    <div class="tab-pane fade show active" id="txt" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Datos en formato TXT</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+{% if datos_txt %}
+{% for linea in datos_txt %}{{ linea }}
+{% endfor %}
+{% else %}
+No hay datos en el archivo TXT
+{% endif %}
+                </pre>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JSON -->
+    <div class="tab-pane fade" id="json" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Datos en formato JSON</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+{{ datos_json | tojson(indent=2) }}
+                </pre>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CSV -->
+    <div class="tab-pane fade" id="csv" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Datos en formato CSV</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in datos_csv %}
+                            <tr>
+                                <td>{{ row.fecha }}</td>
+                                <td>{{ row.nombre }}</td>
+                                <td>{{ row.descripcion }}</td>
+                                <td>{{ row.precio }}</td>
+                                <td>{{ row.cantidad }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No hay datos en el archivo CSV</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SQLAlchemy -->
+    <div class="tab-pane fade" id="sql" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Datos en SQLite (SQLAlchemy)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for producto in productos_sql %}
+                            <tr>
+                                <td>{{ producto.id }}</td>
+                                <td>{{ producto.nombre }}</td>
+                                <td>{{ producto.descripcion or '' }}</td>
+                                <td>${{ "%.2f"|format(producto.precio) }}</td>
+                                <td>{{ producto.cantidad }}</td>
+                                <td>{{ producto.fecha_creacion }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">No hay productos en la base de datos</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12 text-center">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fas fa-home me-2"></i>Volver al Inicio
+        </a>
+    </div>
+</div>
+{% endblock %}
