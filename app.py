@@ -1,9 +1,12 @@
 ﻿# app.py
 # Aplicación Flask Principal - Patronato de Catacocha
-# Semana 12: Persistencia con Archivos y SQLAlchemy
 
-from flask import Flask, render_template, request, redirect, url_for, flash
-from datetime import datetime
+
+# ============================================
+# CRUD COMPLETO PARA MYSQL (Semana 13)
+# ============================================
+from Conexion.conexion import get_db, close_db
+from flask import request, redirect, url_for, flash, render_template
 import os
 
 # Importar formularios
