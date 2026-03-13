@@ -1,0 +1,81 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Médicos MySQL - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-user-md me-3"></i>Gestión de Médicos (MySQL)
+        </h1>
+        <hr class="mb-4">
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <a href="{{ url_for('mysql_nuevo_medico') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nuevo Médico
+        </a>
+        <a href="{{ url_for('mysql_test') }}" class="btn btn-info">
+            <i class="fas fa-database me-2"></i>Test MySQL
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Lista de Médicos</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cédula</th>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Especialidad</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for medico in medicos %}
+                            <tr>
+                                <td>{{ medico.id }}</td>
+                                <td>{{ medico.cedula }}</td>
+                                <td>{{ medico.nombre }}</td>
+                                <td>{{ medico.apellido }}</td>
+                                <td>{{ medico.especialidad }}</td>
+                                <td>{{ medico.telefono }}</td>
+                                <td>{{ medico.email }}</td>
+                                <td>
+                                    <a href="{{ url_for('mysql_editar_medico', id=medico.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('mysql_eliminar_medico', id=medico.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar médico?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                                    <p class="lead">No hay médicos registrados</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

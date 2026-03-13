@@ -1,28 +1,32 @@
 ﻿# setup_mysql.py
-# Script para crear tablas en MySQL con XAMPP
+# Script para crear la base de datos y tablas en MySQL
 
 import mysql.connector
 from mysql.connector import Error
 
-def create_tables():
-    """Crea las tablas en la base de datos existente"""
+def create_database_and_tables():
+    """Crea la base de datos y las tablas necesarias"""
     
-    # Configuración para XAMPP
+    # Configuración (ajusta según tu instalación)
     config = {
-        'host': '127.0.0.1',
+        'host': 'localhost',
         'user': 'root',
-        'password': '',
-        'database': 'turnos_db',
-        'port': 3306
+        'password': ''  # En XAMPP es vacío, en MySQL instalado pon tu contraseña
     }
     
     try:
-        # Conectar directamente a la base de datos
+        # Conectar sin base de datos específica
         conn = mysql.connector.connect(**config)
         cursor = conn.cursor()
         
-        print("✅ Conectado a MySQL (XAMPP)")
-        print(f"📁 Usando base de datos: turnos_db")
+        print("✅ Conectado a MySQL")
+        
+        # Crear base de datos
+        cursor.execute("CREATE DATABASE IF NOT EXISTS turnos_db")
+        print("✅ Base de datos 'turnos_db' creada/verificada")
+        
+        # Usar la base de datos
+        cursor.execute("USE turnos_db")
         
         # ============================================
         # TABLA USUARIOS (requerida por la tarea)
@@ -94,28 +98,23 @@ def create_tables():
         # INSERTAR DATOS DE PRUEBA
         # ============================================
         
-        # Verificar si hay datos en usuarios
+        # Verificar si hay datos
         cursor.execute("SELECT COUNT(*) FROM usuarios")
         if cursor.fetchone()[0] == 0:
             # Insertar usuario de prueba
             cursor.execute("""
                 INSERT INTO usuarios (nombre, mail, password) 
-                VALUES 
-                ('Admin', 'admin@patronato.gob.ec', '123456'),
-                ('Usuario1', 'user1@patronato.gob.ec', 'password1'),
-                ('Usuario2', 'user2@patronato.gob.ec', 'password2')
+                VALUES ('Admin', 'admin@patronato.gob.ec', '123456')
             """)
-            print("✅ Usuarios de prueba insertados")
+            print("✅ Usuario de prueba insertado")
         
-        # Verificar si hay datos en medicos
         cursor.execute("SELECT COUNT(*) FROM medicos")
         if cursor.fetchone()[0] == 0:
             # Insertar médicos de prueba
             medicos = [
                 ('1101234567', 'María', 'Rodríguez', 'Medicina General', '0991234567', 'maria@patronato.gob.ec'),
                 ('1102345678', 'Juan', 'Pérez', 'Pediatría', '0992345678', 'juan@patronato.gob.ec'),
-                ('1103456789', 'Ana', 'González', 'Ginecología', '0993456789', 'ana@patronato.gob.ec'),
-                ('1104567890', 'Carlos', 'Mendoza', 'Odontología', '0994567890', 'carlos@patronato.gob.ec')
+                ('1103456789', 'Ana', 'González', 'Ginecología', '0993456789', 'ana@patronato.gob.ec')
             ]
             cursor.executemany("""
                 INSERT INTO medicos (cedula, nombre, apellido, especialidad, telefono, email)
@@ -123,56 +122,17 @@ def create_tables():
             """, medicos)
             print("✅ Médicos de prueba insertados")
         
-        # Verificar si hay datos en pacientes
-        cursor.execute("SELECT COUNT(*) FROM pacientes")
-        if cursor.fetchone()[0] == 0:
-            # Insertar pacientes de prueba
-            pacientes = [
-                ('1101122334', 'Pedro', 'Ramírez', '1980-05-15', '0991122334', 'Calle 10 de Agosto', 'pedro@email.com'),
-                ('1102233445', 'Mariana', 'López', '1992-08-22', '0992233445', 'Av. Universitaria', 'mariana@email.com'),
-                ('1103344556', 'José', 'Mendoza', '1975-03-10', '0993344556', 'Calle Bolívar', 'jose@email.com')
-            ]
-            cursor.executemany("""
-                INSERT INTO pacientes (cedula, nombre, apellido, fecha_nacimiento, telefono, direccion, email)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, pacientes)
-            print("✅ Pacientes de prueba insertados")
-        
         conn.commit()
-        
-        # Mostrar resumen
-        cursor.execute("SELECT COUNT(*) FROM usuarios")
-        total_usuarios = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM medicos")
-        total_medicos = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM pacientes")
-        total_pacientes = cursor.fetchone()[0]
-        
-        print("\n" + "="*50)
-        print("📊 RESUMEN DE LA BASE DE DATOS")
-        print("="*50)
-        print(f"👥 Usuarios: {total_usuarios}")
-        print(f"👨‍⚕️ Médicos: {total_medicos}")
-        print(f"👤 Pacientes: {total_pacientes}")
-        print("="*50)
         print("\n🎉 ¡BASE DE DATOS CONFIGURADA EXITOSAMENTE!")
         
     except Error as e:
         print(f"❌ Error: {e}")
-        print("\n💡 VERIFICA:")
-        print("   1. Que XAMPP esté corriendo (MySQL iniciado)")
-        print("   2. Que la base de datos 'turnos_db' exista en HeidiSQL")
-        print("   3. Credenciales: usuario 'root', contraseña vacía")
-        print("   4. Puerto: 3306")
     
     finally:
-        if 'conn' in locals() and conn.is_connected():
+        if conn.is_connected():
             cursor.close()
             conn.close()
             print("🔌 Conexión cerrada")
 
 if __name__ == "__main__":
-    print("="*50)
-    print("🚀 CONFIGURANDO BASE DE DATOS MYSQL (XAMPP)")
-    print("="*50)
-    create_tables()
+    create_database_and_tables()

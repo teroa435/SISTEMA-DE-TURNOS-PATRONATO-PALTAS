@@ -1,0 +1,82 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ accion }} - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ accion }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="paciente_id" class="form-label">Paciente:</label>
+                        <select class="form-control" id="paciente_id" name="paciente_id" required>
+                            <option value="">Seleccione un paciente</option>
+                            {% for p in pacientes %}
+                            <option value="{{ p.id }}" {% if turno and turno.paciente_id == p.id %}selected{% endif %}>
+                                {{ p.nombre }} {{ p.apellido }} - {{ p.cedula }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="medico_id" class="form-label">Médico:</label>
+                        <select class="form-control" id="medico_id" name="medico_id" required>
+                            <option value="">Seleccione un médico</option>
+                            {% for m in medicos %}
+                            <option value="{{ m.id }}" {% if turno and turno.medico_id == m.id %}selected{% endif %}>
+                                {{ m.nombre }} {{ m.apellido }} - {{ m.especialidad }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha" class="form-label">Fecha:</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" 
+                                   value="{{ turno.fecha if turno else '' }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="hora" class="form-label">Hora:</label>
+                            <input type="time" class="form-control" id="hora" name="hora" 
+                                   value="{{ turno.hora if turno else '' }}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="motivo" class="form-label">Motivo:</label>
+                        <textarea class="form-control" id="motivo" name="motivo" rows="3">{{ turno.motivo if turno else '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="estado" class="form-label">Estado:</label>
+                        <select class="form-control" id="estado" name="estado">
+                            <option value="Programado" {% if turno and turno.estado == 'Programado' %}selected{% endif %}>Programado</option>
+                            <option value="Confirmado" {% if turno and turno.estado == 'Confirmado' %}selected{% endif %}>Confirmado</option>
+                            <option value="En curso" {% if turno and turno.estado == 'En curso' %}selected{% endif %}>En curso</option>
+                            <option value="Completado" {% if turno and turno.estado == 'Completado' %}selected{% endif %}>Completado</option>
+                            <option value="Cancelado" {% if turno and turno.estado == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                            <option value="No asistió" {% if turno and turno.estado == 'No asistió' %}selected{% endif %}>No asistió</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Guardar
+                        </button>
+                        <a href="{{ url_for('mysql_listar_turnos') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

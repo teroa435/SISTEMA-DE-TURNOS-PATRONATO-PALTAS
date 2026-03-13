@@ -1,0 +1,45 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ accion }} - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ accion }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre:</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                               value="{{ usuario.nombre if usuario else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="mail" class="form-label">Email:</label>
+                        <input type="email" class="form-control" id="mail" name="mail" 
+                               value="{{ usuario.mail if usuario else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password:</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               value="{{ usuario.password if usuario else '' }}" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Guardar
+                        </button>
+                        <a href="{{ url_for('mysql_listar_usuarios') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

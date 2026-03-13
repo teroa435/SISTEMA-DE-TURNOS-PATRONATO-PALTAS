@@ -1,6 +1,6 @@
 ﻿# app.py
 # Aplicación Flask Principal - Patronato de Catacocha
-# Semana 12: Persistencia con Archivos y SQLAlchemy
+# Semana 12 y 13: Persistencia con Archivos, SQLAlchemy y MySQL
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from datetime import datetime
@@ -16,6 +16,10 @@ from inventario.productos import Producto
 # Importar SQLAlchemy
 from inventario.bd import db, ProductoModel
 
+# Importar conexión MySQL
+from Conexion.conexion import get_db, close_db
+from mysql.connector import Error
+
 app = Flask(__name__)
 
 # Configuración
@@ -26,10 +30,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Inicializar SQLAlchemy
 db.init_app(app)
 
-# Crear tablas
+# Crear tablas SQLAlchemy
 with app.app_context():
     db.create_all()
     print("✅ Tablas de SQLAlchemy creadas/verificadas")
+
+# Registrar la función para cerrar conexión MySQL
+app.teardown_appcontext(close_db)
 
 # Instancias de persistencia
 txt_persistencia = PersistenciaTXT()
@@ -117,6 +124,32 @@ def producto_nuevo():
     
     return render_template('producto_form.html', form=form, titulo='Nuevo Producto')
 
+@app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
+def producto_editar(id):
+    '''Edita un producto existente'''
+    producto = ProductoModel.query.get_or_404(id)
+    form = ProductoForm(obj=producto)
+    
+    if form.validate_on_submit():
+        producto.nombre = form.nombre.data
+        producto.descripcion = form.descripcion.data
+        producto.precio = form.precio.data
+        producto.cantidad = form.cantidad.data
+        db.session.commit()
+        flash('Producto actualizado exitosamente', 'success')
+        return redirect(url_for('productos'))
+    
+    return render_template('producto_form.html', form=form, titulo='Editar Producto')
+
+@app.route('/productos/eliminar/<int:id>')
+def producto_eliminar(id):
+    '''Elimina un producto'''
+    producto = ProductoModel.query.get_or_404(id)
+    db.session.delete(producto)
+    db.session.commit()
+    flash('Producto eliminado exitosamente', 'success')
+    return redirect(url_for('productos'))
+
 @app.route('/datos')
 def ver_datos():
     '''Muestra todos los datos almacenados en diferentes formatos'''
@@ -132,20 +165,55 @@ def ver_datos():
                           productos_sql=productos_sql)
 
 # ============================================
+# RUTAS PARA PROBAR MYSQL (Semana 13)
+# ============================================
+
+@app.route('/mysql/test')
+def mysql_test():
+    '''Prueba la conexión a MySQL'''
+    try:
+        db_mysql = get_db()
+        if db_mysql.connection and db_mysql.connection.is_connected():
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>MySQL Test</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            </head>
+            <body>
+                <div class="container mt-5 text-center">
+                    <div class="alert alert-success">
+                        <h1>✅ CONEXIÓN MYSQL EXITOSA</h1>
+                        <p>La aplicación está conectada a MySQL correctamente.</p>
+                    </div>
+                    <div class="mt-4">
+                        <a href='/mysql/usuarios' class="btn btn-primary">Ver Usuarios</a>
+                        <a href='/mysql/pacientes' class="btn btn-primary">Ver Pacientes</a>
+                        <a href='/mysql/medicos' class="btn btn-primary">Ver Médicos</a>
+                        <a href='/mysql/turnos' class="btn btn-primary">Ver Turnos</a>
+                        <a href='/' class="btn btn-secondary">Volver al Inicio</a>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        else:
+            return "❌ No conectado"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+# ============================================
 # CRUD COMPLETO PARA MYSQL (Semana 13)
 # ============================================
-from Conexion.conexion import get_db, close_db
-
-# Registrar la función para cerrar conexión
-app.teardown_appcontext(close_db)
 
 # ---------- CRUD PARA USUARIOS ----------
 
 @app.route('/mysql/usuarios')
 def mysql_listar_usuarios():
     """Listar todos los usuarios"""
-    db = get_db()
-    usuarios = db.fetch_all("SELECT * FROM usuarios ORDER BY id_usuario DESC")
+    db_mysql = get_db()
+    usuarios = db_mysql.fetch_all("SELECT * FROM usuarios ORDER BY id_usuario DESC")
     return render_template('mysql_usuarios.html', usuarios=usuarios)
 
 @app.route('/mysql/usuarios/nuevo', methods=['GET', 'POST'])
@@ -156,9 +224,9 @@ def mysql_nuevo_usuario():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        db = get_db()
+        db_mysql = get_db()
         query = "INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
-        result = db.execute_query(query, (nombre, mail, password))
+        result = db_mysql.execute_query(query, (nombre, mail, password))
         
         if result > 0:
             flash('✅ Usuario insertado correctamente', 'success')
@@ -172,7 +240,7 @@ def mysql_nuevo_usuario():
 @app.route('/mysql/usuarios/editar/<int:id>', methods=['GET', 'POST'])
 def mysql_editar_usuario(id):
     """Modificar usuario"""
-    db = get_db()
+    db_mysql = get_db()
     
     if request.method == 'POST':
         nombre = request.form.get('nombre')
@@ -180,7 +248,7 @@ def mysql_editar_usuario(id):
         password = request.form.get('password')
         
         query = "UPDATE usuarios SET nombre=%s, mail=%s, password=%s WHERE id_usuario=%s"
-        result = db.execute_query(query, (nombre, mail, password, id))
+        result = db_mysql.execute_query(query, (nombre, mail, password, id))
         
         if result > 0:
             flash('✅ Usuario actualizado correctamente', 'success')
@@ -189,7 +257,7 @@ def mysql_editar_usuario(id):
         
         return redirect(url_for('mysql_listar_usuarios'))
     
-    usuario = db.fetch_one("SELECT * FROM usuarios WHERE id_usuario = %s", (id,))
+    usuario = db_mysql.fetch_one("SELECT * FROM usuarios WHERE id_usuario = %s", (id,))
     if not usuario:
         flash('❌ Usuario no encontrado', 'danger')
         return redirect(url_for('mysql_listar_usuarios'))
@@ -199,8 +267,8 @@ def mysql_editar_usuario(id):
 @app.route('/mysql/usuarios/eliminar/<int:id>')
 def mysql_eliminar_usuario(id):
     """Eliminar usuario"""
-    db = get_db()
-    result = db.execute_query("DELETE FROM usuarios WHERE id_usuario = %s", (id,))
+    db_mysql = get_db()
+    result = db_mysql.execute_query("DELETE FROM usuarios WHERE id_usuario = %s", (id,))
     
     if result > 0:
         flash('✅ Usuario eliminado correctamente', 'success')
@@ -214,8 +282,8 @@ def mysql_eliminar_usuario(id):
 @app.route('/mysql/pacientes')
 def mysql_listar_pacientes():
     """Listar todos los pacientes"""
-    db = get_db()
-    pacientes = db.fetch_all("SELECT * FROM pacientes ORDER BY id DESC")
+    db_mysql = get_db()
+    pacientes = db_mysql.fetch_all("SELECT * FROM pacientes ORDER BY id DESC")
     return render_template('mysql_pacientes.html', pacientes=pacientes)
 
 @app.route('/mysql/pacientes/nuevo', methods=['GET', 'POST'])
@@ -232,11 +300,11 @@ def mysql_nuevo_paciente():
             request.form.get('email')
         )
         
-        db = get_db()
+        db_mysql = get_db()
         query = """INSERT INTO pacientes 
                   (cedula, nombre, apellido, fecha_nacimiento, telefono, direccion, email) 
                   VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Paciente insertado correctamente', 'success')
@@ -250,7 +318,7 @@ def mysql_nuevo_paciente():
 @app.route('/mysql/pacientes/editar/<int:id>', methods=['GET', 'POST'])
 def mysql_editar_paciente(id):
     """Modificar paciente"""
-    db = get_db()
+    db_mysql = get_db()
     
     if request.method == 'POST':
         datos = (
@@ -268,7 +336,7 @@ def mysql_editar_paciente(id):
                   SET cedula=%s, nombre=%s, apellido=%s, fecha_nacimiento=%s, 
                       telefono=%s, direccion=%s, email=%s 
                   WHERE id=%s"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Paciente actualizado correctamente', 'success')
@@ -277,7 +345,7 @@ def mysql_editar_paciente(id):
         
         return redirect(url_for('mysql_listar_pacientes'))
     
-    paciente = db.fetch_one("SELECT * FROM pacientes WHERE id = %s", (id,))
+    paciente = db_mysql.fetch_one("SELECT * FROM pacientes WHERE id = %s", (id,))
     if not paciente:
         flash('❌ Paciente no encontrado', 'danger')
         return redirect(url_for('mysql_listar_pacientes'))
@@ -287,8 +355,8 @@ def mysql_editar_paciente(id):
 @app.route('/mysql/pacientes/eliminar/<int:id>')
 def mysql_eliminar_paciente(id):
     """Eliminar paciente"""
-    db = get_db()
-    result = db.execute_query("DELETE FROM pacientes WHERE id = %s", (id,))
+    db_mysql = get_db()
+    result = db_mysql.execute_query("DELETE FROM pacientes WHERE id = %s", (id,))
     
     if result > 0:
         flash('✅ Paciente eliminado correctamente', 'success')
@@ -302,8 +370,8 @@ def mysql_eliminar_paciente(id):
 @app.route('/mysql/medicos')
 def mysql_listar_medicos():
     """Listar todos los médicos"""
-    db = get_db()
-    medicos = db.fetch_all("SELECT * FROM medicos ORDER BY id DESC")
+    db_mysql = get_db()
+    medicos = db_mysql.fetch_all("SELECT * FROM medicos ORDER BY id DESC")
     return render_template('mysql_medicos.html', medicos=medicos)
 
 @app.route('/mysql/medicos/nuevo', methods=['GET', 'POST'])
@@ -319,11 +387,11 @@ def mysql_nuevo_medico():
             request.form.get('email')
         )
         
-        db = get_db()
+        db_mysql = get_db()
         query = """INSERT INTO medicos 
                   (cedula, nombre, apellido, especialidad, telefono, email) 
                   VALUES (%s, %s, %s, %s, %s, %s)"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Médico insertado correctamente', 'success')
@@ -337,7 +405,7 @@ def mysql_nuevo_medico():
 @app.route('/mysql/medicos/editar/<int:id>', methods=['GET', 'POST'])
 def mysql_editar_medico(id):
     """Modificar médico"""
-    db = get_db()
+    db_mysql = get_db()
     
     if request.method == 'POST':
         datos = (
@@ -354,7 +422,7 @@ def mysql_editar_medico(id):
                   SET cedula=%s, nombre=%s, apellido=%s, especialidad=%s, 
                       telefono=%s, email=%s 
                   WHERE id=%s"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Médico actualizado correctamente', 'success')
@@ -363,7 +431,7 @@ def mysql_editar_medico(id):
         
         return redirect(url_for('mysql_listar_medicos'))
     
-    medico = db.fetch_one("SELECT * FROM medicos WHERE id = %s", (id,))
+    medico = db_mysql.fetch_one("SELECT * FROM medicos WHERE id = %s", (id,))
     if not medico:
         flash('❌ Médico no encontrado', 'danger')
         return redirect(url_for('mysql_listar_medicos'))
@@ -373,8 +441,8 @@ def mysql_editar_medico(id):
 @app.route('/mysql/medicos/eliminar/<int:id>')
 def mysql_eliminar_medico(id):
     """Eliminar médico"""
-    db = get_db()
-    result = db.execute_query("DELETE FROM medicos WHERE id = %s", (id,))
+    db_mysql = get_db()
+    result = db_mysql.execute_query("DELETE FROM medicos WHERE id = %s", (id,))
     
     if result > 0:
         flash('✅ Médico eliminado correctamente', 'success')
@@ -388,7 +456,7 @@ def mysql_eliminar_medico(id):
 @app.route('/mysql/turnos')
 def mysql_listar_turnos():
     """Listar todos los turnos con información relacionada"""
-    db = get_db()
+    db_mysql = get_db()
     query = """
         SELECT t.*, 
                p.nombre as paciente_nombre, p.apellido as paciente_apellido,
@@ -398,13 +466,13 @@ def mysql_listar_turnos():
         JOIN medicos m ON t.medico_id = m.id
         ORDER BY t.fecha DESC, t.hora DESC
     """
-    turnos = db.fetch_all(query)
+    turnos = db_mysql.fetch_all(query)
     return render_template('mysql_turnos.html', turnos=turnos)
 
 @app.route('/mysql/turnos/nuevo', methods=['GET', 'POST'])
 def mysql_nuevo_turno():
     """Insertar nuevo turno"""
-    db = get_db()
+    db_mysql = get_db()
     
     if request.method == 'POST':
         datos = (
@@ -419,7 +487,7 @@ def mysql_nuevo_turno():
         query = """INSERT INTO turnos 
                   (paciente_id, medico_id, fecha, hora, motivo, estado) 
                   VALUES (%s, %s, %s, %s, %s, %s)"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Turno insertado correctamente', 'success')
@@ -428,8 +496,8 @@ def mysql_nuevo_turno():
         
         return redirect(url_for('mysql_listar_turnos'))
     
-    pacientes = db.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
-    medicos = db.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
+    pacientes = db_mysql.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
+    medicos = db_mysql.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
     
     return render_template('mysql_turno_form.html', 
                           pacientes=pacientes, 
@@ -439,7 +507,7 @@ def mysql_nuevo_turno():
 @app.route('/mysql/turnos/editar/<int:id>', methods=['GET', 'POST'])
 def mysql_editar_turno(id):
     """Modificar turno"""
-    db = get_db()
+    db_mysql = get_db()
     
     if request.method == 'POST':
         datos = (
@@ -455,7 +523,7 @@ def mysql_editar_turno(id):
         query = """UPDATE turnos 
                   SET paciente_id=%s, medico_id=%s, fecha=%s, hora=%s, motivo=%s, estado=%s 
                   WHERE id=%s"""
-        result = db.execute_query(query, datos)
+        result = db_mysql.execute_query(query, datos)
         
         if result > 0:
             flash('✅ Turno actualizado correctamente', 'success')
@@ -464,13 +532,13 @@ def mysql_editar_turno(id):
         
         return redirect(url_for('mysql_listar_turnos'))
     
-    turno = db.fetch_one("SELECT * FROM turnos WHERE id = %s", (id,))
+    turno = db_mysql.fetch_one("SELECT * FROM turnos WHERE id = %s", (id,))
     if not turno:
         flash('❌ Turno no encontrado', 'danger')
         return redirect(url_for('mysql_listar_turnos'))
     
-    pacientes = db.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
-    medicos = db.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
+    pacientes = db_mysql.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
+    medicos = db_mysql.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
     
     return render_template('mysql_turno_form.html', 
                           turno=turno,
@@ -481,8 +549,8 @@ def mysql_editar_turno(id):
 @app.route('/mysql/turnos/eliminar/<int:id>')
 def mysql_eliminar_turno(id):
     """Eliminar turno"""
-    db = get_db()
-    result = db.execute_query("DELETE FROM turnos WHERE id = %s", (id,))
+    db_mysql = get_db()
+    result = db_mysql.execute_query("DELETE FROM turnos WHERE id = %s", (id,))
     
     if result > 0:
         flash('✅ Turno eliminado correctamente', 'success')

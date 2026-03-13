@@ -1,0 +1,93 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Turnos MySQL - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-calendar-check me-3"></i>Gestión de Turnos (MySQL)
+        </h1>
+        <hr class="mb-4">
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <a href="{{ url_for('mysql_nuevo_turno') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nuevo Turno
+        </a>
+        <a href="{{ url_for('mysql_test') }}" class="btn btn-info">
+            <i class="fas fa-database me-2"></i>Test MySQL
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Lista de Turnos</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Paciente</th>
+                                <th>Médico</th>
+                                <th>Especialidad</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Motivo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for turno in turnos %}
+                            <tr>
+                                <td>{{ turno.id }}</td>
+                                <td>{{ turno.paciente_nombre }} {{ turno.paciente_apellido }}</td>
+                                <td>{{ turno.medico_nombre }} {{ turno.medico_apellido }}</td>
+                                <td>{{ turno.especialidad }}</td>
+                                <td>{{ turno.fecha }}</td>
+                                <td>{{ turno.hora }}</td>
+                                <td>{{ turno.motivo }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if turno.estado == 'Programado' %}bg-primary
+                                        {% elif turno.estado == 'Confirmado' %}bg-success
+                                        {% elif turno.estado == 'En curso' %}bg-info
+                                        {% elif turno.estado == 'Completado' %}bg-secondary
+                                        {% elif turno.estado == 'Cancelado' %}bg-danger
+                                        {% else %}bg-warning{% endif %}">
+                                        {{ turno.estado }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('mysql_editar_turno', id=turno.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('mysql_eliminar_turno', id=turno.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar turno?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                    <p class="lead">No hay turnos registrados</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
