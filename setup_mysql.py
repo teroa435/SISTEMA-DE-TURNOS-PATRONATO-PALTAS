@@ -1,32 +1,28 @@
 ﻿# setup_mysql.py
-# Script para crear la base de datos y tablas en MySQL
+# Script para crear tablas en MySQL con XAMPP (sin datos de prueba)
 
 import mysql.connector
 from mysql.connector import Error
 
-def create_database_and_tables():
-    """Crea la base de datos y las tablas necesarias"""
+def create_tables():
+    \"\"\"Crea las tablas en la base de datos existente (sin datos de prueba)\"\"\"
     
-    # Configuración (ajusta según tu instalación)
+    # Configuración para XAMPP
     config = {
-        'host': 'localhost',
+        'host': '127.0.0.1',
         'user': 'root',
-        'password': ''  # En XAMPP es vacío, en MySQL instalado pon tu contraseña
+        'password': '',
+        'database': 'turnos_db',
+        'port': 3306
     }
     
     try:
-        # Conectar sin base de datos específica
+        # Conectar directamente a la base de datos
         conn = mysql.connector.connect(**config)
         cursor = conn.cursor()
         
-        print("✅ Conectado a MySQL")
-        
-        # Crear base de datos
-        cursor.execute("CREATE DATABASE IF NOT EXISTS turnos_db")
-        print("✅ Base de datos 'turnos_db' creada/verificada")
-        
-        # Usar la base de datos
-        cursor.execute("USE turnos_db")
+        print("✅ Conectado a MySQL (XAMPP)")
+        print(f"📁 Usando base de datos: turnos_db")
         
         # ============================================
         # TABLA USUARIOS (requerida por la tarea)
@@ -94,45 +90,37 @@ def create_database_and_tables():
         """)
         print("✅ Tabla 'turnos' creada/verificada")
         
-        # ============================================
-        # INSERTAR DATOS DE PRUEBA
-        # ============================================
-        
-        # Verificar si hay datos
-        cursor.execute("SELECT COUNT(*) FROM usuarios")
-        if cursor.fetchone()[0] == 0:
-            # Insertar usuario de prueba
-            cursor.execute("""
-                INSERT INTO usuarios (nombre, mail, password) 
-                VALUES ('Admin', 'admin@patronato.gob.ec', '123456')
-            """)
-            print("✅ Usuario de prueba insertado")
-        
-        cursor.execute("SELECT COUNT(*) FROM medicos")
-        if cursor.fetchone()[0] == 0:
-            # Insertar médicos de prueba
-            medicos = [
-                ('1101234567', 'María', 'Rodríguez', 'Medicina General', '0991234567', 'maria@patronato.gob.ec'),
-                ('1102345678', 'Juan', 'Pérez', 'Pediatría', '0992345678', 'juan@patronato.gob.ec'),
-                ('1103456789', 'Ana', 'González', 'Ginecología', '0993456789', 'ana@patronato.gob.ec')
-            ]
-            cursor.executemany("""
-                INSERT INTO medicos (cedula, nombre, apellido, especialidad, telefono, email)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, medicos)
-            print("✅ Médicos de prueba insertados")
+        # NO INSERTAR DATOS DE PRUEBA - SOLO CREAR TABLAS
         
         conn.commit()
+        
+        print("\n" + "="*50)
+        print("📊 TABLAS CREADAS CORRECTAMENTE")
+        print("="*50)
+        print("✅ usuarios")
+        print("✅ pacientes")  
+        print("✅ medicos")
+        print("✅ turnos")
+        print("="*50)
         print("\n🎉 ¡BASE DE DATOS CONFIGURADA EXITOSAMENTE!")
+        print("💡 Los usuarios se crearán cuando se registren en la aplicación")
         
     except Error as e:
         print(f"❌ Error: {e}")
+        print("\n💡 VERIFICA:")
+        print("   1. Que XAMPP esté corriendo (MySQL iniciado)")
+        print("   2. Que la base de datos 'turnos_db' exista en HeidiSQL")
+        print("   3. Credenciales: usuario 'root', contraseña vacía")
+        print("   4. Puerto: 3306")
     
     finally:
-        if conn.is_connected():
+        if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
             print("🔌 Conexión cerrada")
 
 if __name__ == "__main__":
-    create_database_and_tables()
+    print("="*50)
+    print("🚀 CONFIGURANDO BASE DE DATOS MYSQL (XAMPP)")
+    print("="*50)
+    create_tables()
