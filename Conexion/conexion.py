@@ -1,33 +1,35 @@
 ﻿# Conexion/conexion.py
-# Configuración de conexión a MySQL para Flask
+# Configuración de conexión a MySQL para Flask con XAMPP
 
 import mysql.connector
 from mysql.connector import Error
-from flask import current_app, g
+from flask import g
 
 class MySQLConnection:
-    """Clase para manejar la conexión a MySQL"""
+    """Clase para manejar la conexión a MySQL (XAMPP)"""
     
-    def __init__(self, host='localhost', user='root', password='', database='turnos_db'):
+    def __init__(self, host='127.0.0.1', user='root', password='', database='turnos_db', port=3306):
         self.host = host
         self.user = user
         self.password = password
         self.database = database
+        self.port = port
         self.connection = None
         self.cursor = None
     
     def connect(self):
-        """Establece la conexión con MySQL"""
+        """Establece la conexión con MySQL (XAMPP)"""
         try:
             self.connection = mysql.connector.connect(
                 host=self.host,
                 user=self.user,
                 password=self.password,
-                database=self.database
+                database=self.database,
+                port=self.port
             )
             
             if self.connection.is_connected():
-                print(f"✅ Conectado a MySQL - Base de datos: {self.database}")
+                print(f"✅ Conectado a MySQL (XAMPP) - Base de datos: {self.database}")
                 return True
         except Error as e:
             print(f"❌ Error conectando a MySQL: {e}")
@@ -38,7 +40,6 @@ class MySQLConnection:
         if not self.connection or not self.connection.is_connected():
             self.connect()
         
-        # Si dictionary=True, los resultados serán diccionarios
         self.cursor = self.connection.cursor(dictionary=dictionary)
         return self.cursor
     
@@ -88,15 +89,16 @@ class MySQLConnection:
             self.connection.close()
             print("🔌 Conexión a MySQL cerrada")
 
-# Configuración para usar en Flask
+# Función para usar con Flask
 def get_db():
     """Obtiene la conexión a la base de datos (para usar con g)"""
     if 'db' not in g:
         g.db = MySQLConnection(
-            host='localhost',      # Cambia si es necesario
-            user='root',            # Tu usuario de MySQL
-            password='',            # Tu contraseña de MySQL (vacía en XAMPP)
-            database='turnos_db'    # Base de datos a usar
+            host='127.0.0.1',      # localhost
+            user='root',            # Usuario de XAMPP
+            password='',            # Contraseña vacía en XAMPP
+            database='turnos_db',   # Base de datos creada
+            port=3306               # Puerto de MySQL
         )
         g.db.connect()
     return g.db
@@ -106,15 +108,3 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
-
-# Configuración usando variables de entorno (para producción)
-import os
-
-def get_db_from_env():
-    """Obtiene configuración desde variables de entorno"""
-    return MySQLConnection(
-        host=os.environ.get('MYSQL_HOST', 'localhost'),
-        user=os.environ.get('MYSQL_USER', 'root'),
-        password=os.environ.get('MYSQL_PASSWORD', ''),
-        database=os.environ.get('MYSQL_DATABASE', 'turnos_db')
-    )
