@@ -11,7 +11,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 
 # Importar formularios
 from form import ProductoForm, TurnoForm
-from forms import RegistroForm, LoginForm, CambioPasswordForm
+from forms import RegistroForm, LoginForm
 
 # Importar modelos
 from models import Usuario
@@ -27,9 +27,6 @@ from inventario.bd import db, ProductoModel
 from Conexion.conexion import get_db, close_db
 from mysql.connector import Error
 
-# Importar decoradores
-from decorators import login_required_message, admin_required
-
 app = Flask(__name__)
 
 # Configuración
@@ -43,7 +40,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Por favor, inicie sesión para acceder a esta página'
+login_manager.login_message = 'Por favor, inicia sesión para acceder a esta página'
 login_manager.login_message_category = 'info'
 
 @login_manager.user_loader
@@ -92,12 +89,12 @@ def contacto():
     return render_template('contacto.html')
 
 # ============================================
-# RUTAS DE AUTENTICACIÓN
+# RUTAS DE AUTENTICACIÓN (Semana 14)
 # ============================================
 
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
-    '''Registro de nuevos usuarios'''
+    """Registro de nuevos usuarios"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
@@ -120,7 +117,7 @@ def registro():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    '''Inicio de sesión'''
+    """Inicio de sesión"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
@@ -143,37 +140,19 @@ def login():
 
 @app.route('/logout')
 def logout():
-    '''Cierre de sesión'''
+    """Cierre de sesión"""
     logout_user()
     flash('✅ Sesión cerrada correctamente', 'success')
     return redirect(url_for('index'))
 
 @app.route('/perfil')
-@login_required_message('Debes iniciar sesión para ver tu perfil')
+@login_required
 def perfil():
-    '''Perfil de usuario'''
+    """Perfil de usuario (solo para usuarios autenticados)"""
     return render_template('perfil.html')
 
-@app.route('/cambiar-password', methods=['GET', 'POST'])
-@login_required_message('Debes iniciar sesión para cambiar tu contraseña')
-def cambiar_password():
-    '''Cambiar contraseña'''
-    form = CambioPasswordForm()
-    
-    if form.validate_on_submit():
-        if current_user.check_password(form.password_actual.data):
-            if Usuario.update_password(current_user.id, form.nueva_password.data):
-                flash('✅ Contraseña actualizada correctamente', 'success')
-                return redirect(url_for('perfil'))
-            else:
-                flash('❌ Error al actualizar la contraseña', 'danger')
-        else:
-            flash('❌ La contraseña actual es incorrecta', 'danger')
-    
-    return render_template('cambiar_password.html', form=form)
-
 # ============================================
-# RUTAS PROTEGIDAS (requieren autenticación)
+# RUTAS DE CITAS (protegidas)
 # ============================================
 
 @app.route('/cita/<paciente>')
@@ -184,7 +163,7 @@ def cita(paciente):
     return render_template('cita.html', paciente=paciente, fecha=fecha_actual)
 
 @app.route('/citas')
-@login_required_message('Inicia sesión para ver tus citas')
+@login_required
 def citas():
     '''Listado de citas (protegido)'''
     citas_ejemplo = [
@@ -266,7 +245,7 @@ def producto_eliminar(id):
     return redirect(url_for('productos'))
 
 @app.route('/datos')
-@login_required_message('Inicia sesión para ver los datos almacenados')
+@login_required
 def ver_datos():
     '''Muestra todos los datos almacenados (protegido)'''
     datos_txt = txt_persistencia.leer()
@@ -320,15 +299,15 @@ def mysql_test():
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# ---------- CRUD PARA USUARIOS (solo usuarios autenticados) ----------
+# ---------- CRUD PARA USUARIOS ----------
 
 @app.route('/mysql/usuarios')
 @login_required
 def mysql_listar_usuarios():
     """Listar todos los usuarios (protegido)"""
     db_mysql = get_db()
-    usuarios = db_mysql.fetch_all("SELECT * FROM usuarios ORDER BY id_usuario DESC")
-    return render_template('mysql_usuarios.html', usuarios=usuarios)
+    usuarios = db_mysql.fetch_all("SELECT * FROM usuarios ORDER BY fecha_registro DESC")
+    return render_template('mysql_usuarios.html', usuarios=usuarios or [])
 
 @app.route('/mysql/usuarios/nuevo', methods=['GET', 'POST'])
 @login_required
@@ -572,7 +551,7 @@ def mysql_eliminar_medico(id):
     if result > 0:
         flash('✅ Médico eliminado correctamente', 'success')
     else:
-            flash('❌ Error al eliminar médico', 'danger')
+        flash('❌ Error al eliminar médico', 'danger')
     
     return redirect(url_for('mysql_listar_medicos'))
 

@@ -1,5 +1,5 @@
 ﻿# models.py
-# Modelos para el Sistema de Turnos con Flask-Login
+# Modelo de Usuario para autenticación con Flask-Login
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -79,15 +79,3 @@ class Usuario(UserMixin):
     def check_password(self, password):
         """Verifica si la contraseña es correcta"""
         return check_password_hash(self.password, password)
-    
-    @staticmethod
-    def update_password(user_id, new_password):
-        """Actualiza la contraseña de un usuario"""
-        try:
-            db = get_db()
-            password_hash = generate_password_hash(new_password)
-            query = "UPDATE usuarios SET password = %s WHERE id_usuario = %s"
-            return db.execute_query(query, (password_hash, user_id))
-        except Exception as e:
-            print(f"Error en update_password: {e}")
-            return -1

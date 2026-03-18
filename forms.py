@@ -1,5 +1,5 @@
 ﻿# forms.py
-# Formularios para autenticación
+# Formularios para autenticación de usuarios
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
@@ -48,21 +48,3 @@ class LoginForm(FlaskForm):
     ])
     
     submit = SubmitField('Iniciar Sesión')
-
-class CambioPasswordForm(FlaskForm):
-    """Formulario para cambiar contraseña"""
-    password_actual = PasswordField('Contraseña actual', validators=[
-        DataRequired(message='La contraseña actual es requerida')
-    ])
-    
-    nueva_password = PasswordField('Nueva contraseña', validators=[
-        DataRequired(message='La nueva contraseña es requerida'),
-        Length(min=6, message='La contraseña debe tener al menos 6 caracteres')
-    ])
-    
-    confirmar_password = PasswordField('Confirmar nueva contraseña', validators=[
-        DataRequired(message='Debe confirmar la contraseña'),
-        EqualTo('nueva_password', message='Las contraseñas no coinciden')
-    ])
-    
-    submit = SubmitField('Cambiar Contraseña')
