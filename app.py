@@ -1,13 +1,20 @@
 ﻿# app.py
 # Aplicación Flask Principal - Patronato de Catacocha
-# Semana 12 y 13: Persistencia con Archivos, SQLAlchemy y MySQL
+# Semana 14: Sistema de Autenticación con Flask-Login
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from datetime import datetime
 import os
 
+# Flask-Login
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+
 # Importar formularios
 from form import ProductoForm, TurnoForm
+from forms import RegistroForm, LoginForm, CambioPasswordForm
+
+# Importar modelos
+from models import Usuario
 
 # Importar persistencia
 from inventario.inventario import PersistenciaTXT, PersistenciaJSON, PersistenciaCSV
@@ -20,12 +27,29 @@ from inventario.bd import db, ProductoModel
 from Conexion.conexion import get_db, close_db
 from mysql.connector import Error
 
+# Importar decoradores
+from decorators import login_required_message, admin_required
+
 app = Flask(__name__)
 
 # Configuración
-app.config['SECRET_KEY'] = 'clave-secreta-patronato-catacocha-2024'
+app.config['SECRET_KEY'] = 'clave-secreta-patronato-catacocha-2024-segura'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///turnos.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ============================================
+# CONFIGURACIÓN DE FLASK-LOGIN
+# ============================================
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor, inicie sesión para acceder a esta página'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Carga un usuario desde la base de datos"""
+    return Usuario.get_by_id(int(user_id))
 
 # Inicializar SQLAlchemy
 db.init_app(app)
@@ -44,7 +68,7 @@ json_persistencia = PersistenciaJSON()
 csv_persistencia = PersistenciaCSV()
 
 # ============================================
-# RUTAS DE LA APLICACIÓN WEB (semanas anteriores)
+# RUTAS PÚBLICAS (accesibles sin autenticación)
 # ============================================
 
 @app.route('/')
@@ -67,15 +91,102 @@ def contacto():
     '''Página de contacto'''
     return render_template('contacto.html')
 
+# ============================================
+# RUTAS DE AUTENTICACIÓN
+# ============================================
+
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    '''Registro de nuevos usuarios'''
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = RegistroForm()
+    
+    if form.validate_on_submit():
+        usuario = Usuario.create(
+            nombre=form.nombre.data,
+            email=form.email.data,
+            password=form.password.data
+        )
+        
+        if usuario:
+            flash('✅ Registro exitoso. Ahora puedes iniciar sesión.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('❌ Error al registrar usuario. Intente nuevamente.', 'danger')
+    
+    return render_template('registro.html', form=form)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    '''Inicio de sesión'''
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        usuario = Usuario.get_by_email(form.email.data)
+        
+        if usuario and usuario.check_password(form.password.data):
+            login_user(usuario)
+            flash(f'✅ Bienvenido, {usuario.nombre}!', 'success')
+            
+            # Redirigir a la página solicitada o al inicio
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        else:
+            flash('❌ Email o contraseña incorrectos', 'danger')
+    
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    '''Cierre de sesión'''
+    logout_user()
+    flash('✅ Sesión cerrada correctamente', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/perfil')
+@login_required_message('Debes iniciar sesión para ver tu perfil')
+def perfil():
+    '''Perfil de usuario'''
+    return render_template('perfil.html')
+
+@app.route('/cambiar-password', methods=['GET', 'POST'])
+@login_required_message('Debes iniciar sesión para cambiar tu contraseña')
+def cambiar_password():
+    '''Cambiar contraseña'''
+    form = CambioPasswordForm()
+    
+    if form.validate_on_submit():
+        if current_user.check_password(form.password_actual.data):
+            if Usuario.update_password(current_user.id, form.nueva_password.data):
+                flash('✅ Contraseña actualizada correctamente', 'success')
+                return redirect(url_for('perfil'))
+            else:
+                flash('❌ Error al actualizar la contraseña', 'danger')
+        else:
+            flash('❌ La contraseña actual es incorrecta', 'danger')
+    
+    return render_template('cambiar_password.html', form=form)
+
+# ============================================
+# RUTAS PROTEGIDAS (requieren autenticación)
+# ============================================
+
 @app.route('/cita/<paciente>')
+@login_required
 def cita(paciente):
-    '''Ruta dinámica para citas'''
+    '''Ruta dinámica para citas (protegida)'''
     fecha_actual = datetime.now().strftime("%d/%m/%Y")
     return render_template('cita.html', paciente=paciente, fecha=fecha_actual)
 
 @app.route('/citas')
+@login_required_message('Inicia sesión para ver tus citas')
 def citas():
-    '''Listado de citas'''
+    '''Listado de citas (protegido)'''
     citas_ejemplo = [
         {'paciente': 'María González', 'fecha': '15/03/2024', 'servicio': 'Medicina General'},
         {'paciente': 'Juan Pérez', 'fecha': '16/03/2024', 'servicio': 'Odontología'},
@@ -84,18 +195,20 @@ def citas():
     return render_template('citas.html', citas=citas_ejemplo)
 
 # ============================================
-# RUTAS DE PERSISTENCIA (Semana 12)
+# RUTAS DE PERSISTENCIA (protegidas)
 # ============================================
 
 @app.route('/productos')
+@login_required
 def productos():
-    '''Lista todos los productos usando SQLAlchemy'''
+    '''Lista todos los productos (protegido)'''
     productos = ProductoModel.query.all()
     return render_template('productos.html', productos=productos)
 
 @app.route('/productos/nuevo', methods=['GET', 'POST'])
+@login_required
 def producto_nuevo():
-    '''Crea un nuevo producto'''
+    '''Crea un nuevo producto (protegido)'''
     form = ProductoForm()
     
     if form.validate_on_submit():
@@ -119,14 +232,15 @@ def producto_nuevo():
         json_persistencia.guardar(datos_producto)
         csv_persistencia.guardar(datos_producto)
         
-        flash('Producto creado exitosamente', 'success')
+        flash('✅ Producto creado exitosamente', 'success')
         return redirect(url_for('productos'))
     
     return render_template('producto_form.html', form=form, titulo='Nuevo Producto')
 
 @app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def producto_editar(id):
-    '''Edita un producto existente'''
+    '''Edita un producto existente (protegido)'''
     producto = ProductoModel.query.get_or_404(id)
     form = ProductoForm(obj=producto)
     
@@ -136,23 +250,25 @@ def producto_editar(id):
         producto.precio = form.precio.data
         producto.cantidad = form.cantidad.data
         db.session.commit()
-        flash('Producto actualizado exitosamente', 'success')
+        flash('✅ Producto actualizado exitosamente', 'success')
         return redirect(url_for('productos'))
     
     return render_template('producto_form.html', form=form, titulo='Editar Producto')
 
 @app.route('/productos/eliminar/<int:id>')
+@login_required
 def producto_eliminar(id):
-    '''Elimina un producto'''
+    '''Elimina un producto (protegido)'''
     producto = ProductoModel.query.get_or_404(id)
     db.session.delete(producto)
     db.session.commit()
-    flash('Producto eliminado exitosamente', 'success')
+    flash('✅ Producto eliminado exitosamente', 'success')
     return redirect(url_for('productos'))
 
 @app.route('/datos')
+@login_required_message('Inicia sesión para ver los datos almacenados')
 def ver_datos():
-    '''Muestra todos los datos almacenados en diferentes formatos'''
+    '''Muestra todos los datos almacenados (protegido)'''
     datos_txt = txt_persistencia.leer()
     datos_json = json_persistencia.leer()
     datos_csv = csv_persistencia.leer()
@@ -165,12 +281,13 @@ def ver_datos():
                           productos_sql=productos_sql)
 
 # ============================================
-# RUTAS PARA PROBAR MYSQL (Semana 13)
+# RUTAS MYSQL (protegidas)
 # ============================================
 
 @app.route('/mysql/test')
+@login_required
 def mysql_test():
-    '''Prueba la conexión a MySQL'''
+    '''Prueba la conexión a MySQL (protegido)'''
     try:
         db_mysql = get_db()
         if db_mysql.connection and db_mysql.connection.is_connected():
@@ -203,22 +320,20 @@ def mysql_test():
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# ============================================
-# CRUD COMPLETO PARA MYSQL (Semana 13)
-# ============================================
-
-# ---------- CRUD PARA USUARIOS ----------
+# ---------- CRUD PARA USUARIOS (solo usuarios autenticados) ----------
 
 @app.route('/mysql/usuarios')
+@login_required
 def mysql_listar_usuarios():
-    """Listar todos los usuarios"""
+    """Listar todos los usuarios (protegido)"""
     db_mysql = get_db()
     usuarios = db_mysql.fetch_all("SELECT * FROM usuarios ORDER BY id_usuario DESC")
     return render_template('mysql_usuarios.html', usuarios=usuarios)
 
 @app.route('/mysql/usuarios/nuevo', methods=['GET', 'POST'])
+@login_required
 def mysql_nuevo_usuario():
-    """Insertar nuevo usuario"""
+    """Insertar nuevo usuario (protegido)"""
     if request.method == 'POST':
         nombre = request.form.get('nombre')
         mail = request.form.get('mail')
@@ -238,8 +353,9 @@ def mysql_nuevo_usuario():
     return render_template('mysql_usuario_form.html', accion='Nuevo Usuario')
 
 @app.route('/mysql/usuarios/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def mysql_editar_usuario(id):
-    """Modificar usuario"""
+    """Modificar usuario (protegido)"""
     db_mysql = get_db()
     
     if request.method == 'POST':
@@ -265,8 +381,9 @@ def mysql_editar_usuario(id):
     return render_template('mysql_usuario_form.html', usuario=usuario, accion='Editar Usuario')
 
 @app.route('/mysql/usuarios/eliminar/<int:id>')
+@login_required
 def mysql_eliminar_usuario(id):
-    """Eliminar usuario"""
+    """Eliminar usuario (protegido)"""
     db_mysql = get_db()
     result = db_mysql.execute_query("DELETE FROM usuarios WHERE id_usuario = %s", (id,))
     
@@ -277,18 +394,20 @@ def mysql_eliminar_usuario(id):
     
     return redirect(url_for('mysql_listar_usuarios'))
 
-# ---------- CRUD PARA PACIENTES ----------
+# ---------- CRUD PARA PACIENTES (protegido) ----------
 
 @app.route('/mysql/pacientes')
+@login_required
 def mysql_listar_pacientes():
-    """Listar todos los pacientes"""
+    """Listar todos los pacientes (protegido)"""
     db_mysql = get_db()
     pacientes = db_mysql.fetch_all("SELECT * FROM pacientes ORDER BY id DESC")
     return render_template('mysql_pacientes.html', pacientes=pacientes)
 
 @app.route('/mysql/pacientes/nuevo', methods=['GET', 'POST'])
+@login_required
 def mysql_nuevo_paciente():
-    """Insertar nuevo paciente"""
+    """Insertar nuevo paciente (protegido)"""
     if request.method == 'POST':
         datos = (
             request.form.get('cedula'),
@@ -316,8 +435,9 @@ def mysql_nuevo_paciente():
     return render_template('mysql_paciente_form.html', accion='Nuevo Paciente')
 
 @app.route('/mysql/pacientes/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def mysql_editar_paciente(id):
-    """Modificar paciente"""
+    """Modificar paciente (protegido)"""
     db_mysql = get_db()
     
     if request.method == 'POST':
@@ -353,8 +473,9 @@ def mysql_editar_paciente(id):
     return render_template('mysql_paciente_form.html', paciente=paciente, accion='Editar Paciente')
 
 @app.route('/mysql/pacientes/eliminar/<int:id>')
+@login_required
 def mysql_eliminar_paciente(id):
-    """Eliminar paciente"""
+    """Eliminar paciente (protegido)"""
     db_mysql = get_db()
     result = db_mysql.execute_query("DELETE FROM pacientes WHERE id = %s", (id,))
     
@@ -365,18 +486,20 @@ def mysql_eliminar_paciente(id):
     
     return redirect(url_for('mysql_listar_pacientes'))
 
-# ---------- CRUD PARA MÉDICOS ----------
+# ---------- CRUD PARA MÉDICOS (protegido) ----------
 
 @app.route('/mysql/medicos')
+@login_required
 def mysql_listar_medicos():
-    """Listar todos los médicos"""
+    """Listar todos los médicos (protegido)"""
     db_mysql = get_db()
     medicos = db_mysql.fetch_all("SELECT * FROM medicos ORDER BY id DESC")
     return render_template('mysql_medicos.html', medicos=medicos)
 
 @app.route('/mysql/medicos/nuevo', methods=['GET', 'POST'])
+@login_required
 def mysql_nuevo_medico():
-    """Insertar nuevo médico"""
+    """Insertar nuevo médico (protegido)"""
     if request.method == 'POST':
         datos = (
             request.form.get('cedula'),
@@ -403,8 +526,9 @@ def mysql_nuevo_medico():
     return render_template('mysql_medico_form.html', accion='Nuevo Médico')
 
 @app.route('/mysql/medicos/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def mysql_editar_medico(id):
-    """Modificar médico"""
+    """Modificar médico (protegido)"""
     db_mysql = get_db()
     
     if request.method == 'POST':
@@ -439,23 +563,25 @@ def mysql_editar_medico(id):
     return render_template('mysql_medico_form.html', medico=medico, accion='Editar Médico')
 
 @app.route('/mysql/medicos/eliminar/<int:id>')
+@login_required
 def mysql_eliminar_medico(id):
-    """Eliminar médico"""
+    """Eliminar médico (protegido)"""
     db_mysql = get_db()
     result = db_mysql.execute_query("DELETE FROM medicos WHERE id = %s", (id,))
     
     if result > 0:
         flash('✅ Médico eliminado correctamente', 'success')
     else:
-        flash('❌ Error al eliminar médico', 'danger')
+            flash('❌ Error al eliminar médico', 'danger')
     
     return redirect(url_for('mysql_listar_medicos'))
 
-# ---------- CRUD PARA TURNOS ----------
+# ---------- CRUD PARA TURNOS (protegido) ----------
 
 @app.route('/mysql/turnos')
+@login_required
 def mysql_listar_turnos():
-    """Listar todos los turnos con información relacionada"""
+    """Listar todos los turnos con información relacionada (protegido)"""
     db_mysql = get_db()
     query = """
         SELECT t.*, 
@@ -470,8 +596,9 @@ def mysql_listar_turnos():
     return render_template('mysql_turnos.html', turnos=turnos)
 
 @app.route('/mysql/turnos/nuevo', methods=['GET', 'POST'])
+@login_required
 def mysql_nuevo_turno():
-    """Insertar nuevo turno"""
+    """Insertar nuevo turno (protegido)"""
     db_mysql = get_db()
     
     if request.method == 'POST':
@@ -505,8 +632,9 @@ def mysql_nuevo_turno():
                           accion='Nuevo Turno')
 
 @app.route('/mysql/turnos/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def mysql_editar_turno(id):
-    """Modificar turno"""
+    """Modificar turno (protegido)"""
     db_mysql = get_db()
     
     if request.method == 'POST':
@@ -547,8 +675,9 @@ def mysql_editar_turno(id):
                           accion='Editar Turno')
 
 @app.route('/mysql/turnos/eliminar/<int:id>')
+@login_required
 def mysql_eliminar_turno(id):
-    """Eliminar turno"""
+    """Eliminar turno (protegido)"""
     db_mysql = get_db()
     result = db_mysql.execute_query("DELETE FROM turnos WHERE id = %s", (id,))
     
