@@ -1,675 +1,720 @@
-﻿# app.py
-# Aplicación Flask Principal - Patronato de Catacocha
-# Semana 14: Sistema de Autenticación con Flask-Login
-
-from flask import Flask, render_template, request, redirect, url_for, flash
-from datetime import datetime
-import os
-
-# Flask-Login
+﻿from flask import Flask, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-
-# Importar formularios
-from form import ProductoForm, TurnoForm
-from forms import RegistroForm, LoginForm
-
-# Importar modelos
-from models import Usuario
-
-# Importar persistencia
-from inventario.inventario import PersistenciaTXT, PersistenciaJSON, PersistenciaCSV
-from inventario.productos import Producto
-
-# Importar SQLAlchemy
-from inventario.bd import db, ProductoModel
-
-# Importar conexión MySQL
-from Conexion.conexion import get_db, close_db
-from mysql.connector import Error
+from werkzeug.security import generate_password_hash, check_password_hash
+import mysql.connector
+from datetime import datetime
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'clave-secreta-2024'
 
-# Configuración
-app.config['SECRET_KEY'] = 'clave-secreta-patronato-catacocha-2024-segura'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///turnos.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# ============================================
-# CONFIGURACIÓN DE FLASK-LOGIN
-# ============================================
+# Configurar Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Por favor, inicia sesión para acceder a esta página'
-login_manager.login_message_category = 'info'
+
+# Conexión a MySQL
+def get_db():
+    return mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='',
+        database='turnos_db'
+    )
+
+# Crear tablas si no existen
+try:
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Tabla de usuarios
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(100),
+            email VARCHAR(100) UNIQUE,
+            password VARCHAR(255)
+        )
+    ''')
+    
+    # Tabla de turnos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS turnos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT,
+            nombre_completo VARCHAR(100),
+            cedula VARCHAR(20),
+            telefono VARCHAR(20),
+            servicio VARCHAR(50),
+            fecha DATE,
+            hora TIME,
+            motivo TEXT,
+            estado VARCHAR(20) DEFAULT "Programado",
+            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        )
+    ''')
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("Base de datos lista")
+except Exception as e:
+    print(f"Error: {e}")
+
+# Modelo Usuario
+class Usuario:
+    def __init__(self, id, nombre, email, password):
+        self.id = id
+        self.nombre = nombre
+        self.email = email
+        self.password = password
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_active(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
+    
+    def get_id(self):
+        return str(self.id)
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Carga un usuario desde la base de datos"""
-    return Usuario.get_by_id(int(user_id))
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM usuarios WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if user:
+            return Usuario(user['id'], user['nombre'], user['email'], user['password'])
+    except:
+        pass
+    return None
 
-# Inicializar SQLAlchemy
-db.init_app(app)
+# CSS Global
+CSS = '''
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .nav-bar {
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .nav-bar .brand {
+        font-size: 20px;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .nav-bar a {
+        color: #667eea;
+        text-decoration: none;
+        margin-left: 20px;
+    }
+    
+    .nav-bar a:hover {
+        text-decoration: underline;
+    }
+    
+    .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        padding: 40px;
+        width: 100%;
+        max-width: 600px;
+        margin: 40px auto;
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    .container-large {
+        max-width: 1200px;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 500;
+    }
+    
+    input, select, textarea {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: all 0.3s;
+        outline: none;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.3s;
+    }
+    
+    button:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        margin-top: 10px;
+    }
+    
+    .link {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .link a {
+        color: #667eea;
+        text-decoration: none;
+    }
+    
+    .message {
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .message.success { background: #d4edda; color: #155724; }
+    .message.error { background: #f8d7da; color: #721c24; }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    
+    th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    th {
+        background: #f8f9fa;
+        color: #333;
+    }
+    
+    .badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .badge-programado { background: #ffc107; color: #333; }
+    .badge-confirmado { background: #28a745; color: white; }
+    .badge-cancelado { background: #dc3545; color: white; }
+    
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+        width: auto;
+        margin: 0 5px;
+        display: inline-block;
+    }
+    
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .service-card {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .service-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .service-card h3 { margin-bottom: 10px; }
+    .service-card p { font-size: 14px; }
+    
+    .row {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .col {
+        flex: 1;
+    }
+</style>
+'''
 
-# Crear tablas SQLAlchemy
-with app.app_context():
-    db.create_all()
-    print("✅ Tablas de SQLAlchemy creadas/verificadas")
-
-# Registrar la función para cerrar conexión MySQL
-app.teardown_appcontext(close_db)
-
-# Instancias de persistencia
-txt_persistencia = PersistenciaTXT()
-json_persistencia = PersistenciaJSON()
-csv_persistencia = PersistenciaCSV()
-
-# ============================================
-# RUTAS PÚBLICAS (accesibles sin autenticación)
-# ============================================
-
+# RUTAS PRINCIPALES
 @app.route('/')
 def index():
-    '''Página principal'''
-    return render_template('index.html')
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Patronato de Catacocha</title>
+        {CSS}
+    </head>
+    <body>
+        <div class="nav-bar">
+            <span class="brand">🏛️ Patronato de Catacocha</span>
+            <div>
+                <a href="/">Inicio</a>
+                <a href="/agendar">Agendar Turno</a>
+                <a href="/mis-turnos">Mis Turnos</a>
+                <a href="/perfil">Mi Perfil</a>
+                <a href="/logout">Salir</a>
+            </div>
+        </div>
+        <div class="container">
+            <h2>🏛️ Sistema de Agendamiento de Turnos</h2>
+            <p style="text-align: center; margin-bottom: 30px;">Bienvenido, {current_user.nombre if current_user.is_authenticated else "Visitante"}</p>
+            <div class="card-grid">
+                <a href="/agendar" style="text-decoration: none;">
+                    <div class="service-card">
+                        <h3>📅 Agendar Turno</h3>
+                        <p>Solicita una cita médica</p>
+                    </div>
+                </a>
+                <a href="/mis-turnos" style="text-decoration: none;">
+                    <div class="service-card">
+                        <h3>📋 Mis Turnos</h3>
+                        <p>Consulta tus citas programadas</p>
+                    </div>
+                </a>
+                <a href="/perfil" style="text-decoration: none;">
+                    <div class="service-card">
+                        <h3>👤 Mi Perfil</h3>
+                        <p>Actualiza tu información</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
 
-@app.route('/about')
-def about():
-    '''Página Acerca de'''
-    return render_template('about.html')
-
-@app.route('/servicios')
-def servicios():
-    '''Página de servicios'''
-    return render_template('servicios.html')
-
-@app.route('/contacto')
-def contacto():
-    '''Página de contacto'''
-    return render_template('contacto.html')
-
-# ============================================
-# RUTAS DE AUTENTICACIÓN (Semana 14)
-# ============================================
-
-@app.route('/registro', methods=['GET', 'POST'])
-def registro():
-    """Registro de nuevos usuarios"""
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    form = RegistroForm()
-    
-    if form.validate_on_submit():
-        usuario = Usuario.create(
-            nombre=form.nombre.data,
-            email=form.email.data,
-            password=form.password.data
-        )
-        
-        if usuario:
-            flash('✅ Registro exitoso. Ahora puedes iniciar sesión.', 'success')
-            return redirect(url_for('login'))
-        else:
-            flash('❌ Error al registrar usuario. Intente nuevamente.', 'danger')
-    
-    return render_template('registro.html', form=form)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Inicio de sesión"""
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    form = LoginForm()
-    
-    if form.validate_on_submit():
-        usuario = Usuario.get_by_email(form.email.data)
-        
-        if usuario and usuario.check_password(form.password.data):
-            login_user(usuario)
-            flash(f'✅ Bienvenido, {usuario.nombre}!', 'success')
+# AGENDAR TURNO
+@app.route('/agendar', methods=['GET', 'POST'])
+@login_required
+def agendar_turno():
+    if request.method == 'POST':
+        try:
+            datos = (
+                current_user.id,
+                request.form.get('nombre_completo'),
+                request.form.get('cedula'),
+                request.form.get('telefono'),
+                request.form.get('servicio'),
+                request.form.get('fecha'),
+                request.form.get('hora'),
+                request.form.get('motivo')
+            )
             
-            # Redirigir a la página solicitada o al inicio
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
-        else:
-            flash('❌ Email o contraseña incorrectos', 'danger')
-    
-    return render_template('login.html', form=form)
-
-@app.route('/logout')
-def logout():
-    """Cierre de sesión"""
-    logout_user()
-    flash('✅ Sesión cerrada correctamente', 'success')
-    return redirect(url_for('index'))
-
-@app.route('/perfil')
-@login_required
-def perfil():
-    """Perfil de usuario (solo para usuarios autenticados)"""
-    return render_template('perfil.html')
-
-# ============================================
-# RUTAS DE CITAS (protegidas)
-# ============================================
-
-@app.route('/cita/<paciente>')
-@login_required
-def cita(paciente):
-    '''Ruta dinámica para citas (protegida)'''
-    fecha_actual = datetime.now().strftime("%d/%m/%Y")
-    return render_template('cita.html', paciente=paciente, fecha=fecha_actual)
-
-@app.route('/citas')
-@login_required
-def citas():
-    '''Listado de citas (protegido)'''
-    citas_ejemplo = [
-        {'paciente': 'María González', 'fecha': '15/03/2024', 'servicio': 'Medicina General'},
-        {'paciente': 'Juan Pérez', 'fecha': '16/03/2024', 'servicio': 'Odontología'},
-        {'paciente': 'Ana Rodríguez', 'fecha': '17/03/2024', 'servicio': 'Trabajo Social'}
-    ]
-    return render_template('citas.html', citas=citas_ejemplo)
-
-# ============================================
-# RUTAS DE PERSISTENCIA (protegidas)
-# ============================================
-
-@app.route('/productos')
-@login_required
-def productos():
-    '''Lista todos los productos (protegido)'''
-    productos = ProductoModel.query.all()
-    return render_template('productos.html', productos=productos)
-
-@app.route('/productos/nuevo', methods=['GET', 'POST'])
-@login_required
-def producto_nuevo():
-    '''Crea un nuevo producto (protegido)'''
-    form = ProductoForm()
-    
-    if form.validate_on_submit():
-        producto = ProductoModel(
-            nombre=form.nombre.data,
-            descripcion=form.descripcion.data,
-            precio=form.precio.data,
-            cantidad=form.cantidad.data
-        )
-        db.session.add(producto)
-        db.session.commit()
-        
-        datos_producto = {
-            'nombre': form.nombre.data,
-            'descripcion': form.descripcion.data,
-            'precio': form.precio.data,
-            'cantidad': form.cantidad.data
-        }
-        
-        txt_persistencia.guardar(f"Producto: {datos_producto}")
-        json_persistencia.guardar(datos_producto)
-        csv_persistencia.guardar(datos_producto)
-        
-        flash('✅ Producto creado exitosamente', 'success')
-        return redirect(url_for('productos'))
-    
-    return render_template('producto_form.html', form=form, titulo='Nuevo Producto')
-
-@app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
-@login_required
-def producto_editar(id):
-    '''Edita un producto existente (protegido)'''
-    producto = ProductoModel.query.get_or_404(id)
-    form = ProductoForm(obj=producto)
-    
-    if form.validate_on_submit():
-        producto.nombre = form.nombre.data
-        producto.descripcion = form.descripcion.data
-        producto.precio = form.precio.data
-        producto.cantidad = form.cantidad.data
-        db.session.commit()
-        flash('✅ Producto actualizado exitosamente', 'success')
-        return redirect(url_for('productos'))
-    
-    return render_template('producto_form.html', form=form, titulo='Editar Producto')
-
-@app.route('/productos/eliminar/<int:id>')
-@login_required
-def producto_eliminar(id):
-    '''Elimina un producto (protegido)'''
-    producto = ProductoModel.query.get_or_404(id)
-    db.session.delete(producto)
-    db.session.commit()
-    flash('✅ Producto eliminado exitosamente', 'success')
-    return redirect(url_for('productos'))
-
-@app.route('/datos')
-@login_required
-def ver_datos():
-    '''Muestra todos los datos almacenados (protegido)'''
-    datos_txt = txt_persistencia.leer()
-    datos_json = json_persistencia.leer()
-    datos_csv = csv_persistencia.leer()
-    productos_sql = ProductoModel.query.all()
-    
-    return render_template('datos.html', 
-                          datos_txt=datos_txt,
-                          datos_json=datos_json,
-                          datos_csv=datos_csv,
-                          productos_sql=productos_sql)
-
-# ============================================
-# RUTAS MYSQL (protegidas)
-# ============================================
-
-@app.route('/mysql/test')
-@login_required
-def mysql_test():
-    '''Prueba la conexión a MySQL (protegido)'''
-    try:
-        db_mysql = get_db()
-        if db_mysql.connection and db_mysql.connection.is_connected():
-            return """
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO turnos (usuario_id, nombre_completo, cedula, telefono, servicio, fecha, hora, motivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', datos)
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return f'''
             <!DOCTYPE html>
             <html>
             <head>
-                <title>MySQL Test</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <title>Turno Agendado</title>
+                {CSS}
             </head>
             <body>
-                <div class="container mt-5 text-center">
-                    <div class="alert alert-success">
-                        <h1>✅ CONEXIÓN MYSQL EXITOSA</h1>
-                        <p>La aplicación está conectada a MySQL correctamente.</p>
-                    </div>
-                    <div class="mt-4">
-                        <a href='/mysql/usuarios' class="btn btn-primary">Ver Usuarios</a>
-                        <a href='/mysql/pacientes' class="btn btn-primary">Ver Pacientes</a>
-                        <a href='/mysql/medicos' class="btn btn-primary">Ver Médicos</a>
-                        <a href='/mysql/turnos' class="btn btn-primary">Ver Turnos</a>
-                        <a href='/' class="btn btn-secondary">Volver al Inicio</a>
-                    </div>
+                <div class="nav-bar">
+                    <span class="brand">🏛️ Patronato de Catacocha</span>
+                    <div><a href="/">Inicio</a><a href="/mis-turnos">Mis Turnos</a><a href="/logout">Salir</a></div>
+                </div>
+                <div class="container">
+                    <div class="message success">✅ ¡Turno agendado exitosamente!</div>
+                    <div class="link"><a href="/mis-turnos">Ver mis turnos</a> | <a href="/">Volver al inicio</a></div>
                 </div>
             </body>
             </html>
-            """
+            '''
+        except Exception as e:
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Error</title>
+                {CSS}
+            </head>
+            <body>
+                <div class="container">
+                    <div class="message error">❌ Error: {e}</div>
+                    <div class="link"><a href="/agendar">Volver a intentar</a></div>
+                </div>
+            </body>
+            </html>
+            '''
+    
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Agendar Turno</title>
+        {CSS}
+    </head>
+    <body>
+        <div class="nav-bar">
+            <span class="brand">🏛️ Patronato de Catacocha</span>
+            <div><a href="/">Inicio</a><a href="/mis-turnos">Mis Turnos</a><a href="/perfil">Mi Perfil</a><a href="/logout">Salir</a></div>
+        </div>
+        <div class="container">
+            <h2>📅 Agendar Nuevo Turno</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label>Nombre completo</label>
+                    <input type="text" name="nombre_completo" value="{current_user.nombre}" required>
+                </div>
+                <div class="form-group">
+                    <label>Cédula</label>
+                    <input type="text" name="cedula" placeholder="Ingresa tu cédula" required>
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="tel" name="telefono" placeholder="0991234567" required>
+                </div>
+                <div class="form-group">
+                    <label>Servicio médico</label>
+                    <select name="servicio" required>
+                        <option value="">Selecciona un servicio</option>
+                        <option value="Medicina General">🩺 Medicina General</option>
+                        <option value="Pediatría">👶 Pediatría</option>
+                        <option value="Ginecología">👩 Ginecología</option>
+                        <option value="Odontología">🦷 Odontología</option>
+                        <option value="Cardiología">❤️ Cardiología</option>
+                        <option value="Trabajo Social">🤝 Trabajo Social</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input type="date" name="fecha" required>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label>Hora</label>
+                            <input type="time" name="hora" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Motivo de consulta</label>
+                    <textarea name="motivo" rows="3" placeholder="Describe el motivo de tu consulta"></textarea>
+                </div>
+                <button type="submit">Agendar Turno</button>
+                <a href="/"><button type="button" class="btn-secondary">Cancelar</button></a>
+            </form>
+        </div>
+    </body>
+    </html>
+    '''
+
+# MIS TURNOS
+@app.route('/mis-turnos')
+@login_required
+def mis_turnos():
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM turnos WHERE usuario_id = %s ORDER BY fecha DESC", (current_user.id,))
+        turnos = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        if not turnos:
+            turnos_html = '<p style="text-align: center;">No tienes turnos agendados. <a href="/agendar">Agendar turno</a></p>'
         else:
-            return "❌ No conectado"
+            turnos_html = '''
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Servicio</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+            '''
+            for t in turnos:
+                estado_class = {
+                    'Programado': 'badge-programado',
+                    'Confirmado': 'badge-confirmado',
+                    'Cancelado': 'badge-cancelado'
+                }.get(t['estado'], 'badge-programado')
+                
+                turnos_html += f'''
+                    <tr>
+                        <td>{t['fecha']}</td>
+                        <td>{t['hora']}</td>
+                        <td>{t['servicio']}</td>
+                        <td><span class="badge {estado_class}">{t['estado']}</span></td>
+                        <td>
+                            <a href="/cancelar-turno/{t['id']}" onclick="return confirm('¿Cancelar este turno?')">
+                                <button class="btn-sm" style="background:#dc3545;color:white;">Cancelar</button>
+                            </a>
+                        </td>
+                    </tr>
+                '''
+            turnos_html += '</tbody></table>'
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Mis Turnos</title>
+            {CSS}
+        </head>
+        <body>
+            <div class="nav-bar">
+                <span class="brand">🏛️ Patronato de Catacocha</span>
+                <div><a href="/">Inicio</a><a href="/agendar">Agendar</a><a href="/perfil">Mi Perfil</a><a href="/logout">Salir</a></div>
+            </div>
+            <div class="container container-large">
+                <h2>📋 Mis Turnos</h2>
+                {turnos_html}
+                <div class="link"><a href="/agendar">+ Agendar nuevo turno</a></div>
+            </div>
+        </body>
+        </html>
+        '''
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f'Error: {e}'
 
-# ---------- CRUD PARA USUARIOS ----------
-
-@app.route('/mysql/usuarios')
+# CANCELAR TURNO
+@app.route('/cancelar-turno/<int:id>')
 @login_required
-def mysql_listar_usuarios():
-    """Listar todos los usuarios (protegido)"""
-    db_mysql = get_db()
-    usuarios = db_mysql.fetch_all("SELECT * FROM usuarios ORDER BY fecha_registro DESC")
-    return render_template('mysql_usuarios.html', usuarios=usuarios or [])
+def cancelar_turno(id):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE turnos SET estado = 'Cancelado' WHERE id = %s AND usuario_id = %s", (id, current_user.id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return redirect(url_for('mis_turnos'))
+    except Exception as e:
+        return f'Error: {e}'
 
-@app.route('/mysql/usuarios/nuevo', methods=['GET', 'POST'])
+# PERFIL
+@app.route('/perfil')
 @login_required
-def mysql_nuevo_usuario():
-    """Insertar nuevo usuario (protegido)"""
+def perfil():
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mi Perfil</title>
+        {CSS}
+    </head>
+    <body>
+        <div class="nav-bar">
+            <span class="brand">🏛️ Patronato de Catacocha</span>
+            <div><a href="/">Inicio</a><a href="/agendar">Agendar</a><a href="/mis-turnos">Mis Turnos</a><a href="/logout">Salir</a></div>
+        </div>
+        <div class="container">
+            <h2>👤 Mi Perfil</h2>
+            <p><strong>Nombre:</strong> {current_user.nombre}</p>
+            <p><strong>Email:</strong> {current_user.email}</p>
+            <div class="link"><a href="/agendar">Agendar turno</a> | <a href="/mis-turnos">Ver mis turnos</a></div>
+        </div>
+    </body>
+    </html>
+    '''
+
+# REGISTRO
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
-        mail = request.form.get('mail')
+        email = request.form.get('email')
         password = request.form.get('password')
+        confirm = request.form.get('confirm_password')
         
-        db_mysql = get_db()
-        query = "INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
-        result = db_mysql.execute_query(query, (nombre, mail, password))
+        if password != confirm:
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Error</title>{CSS}</head>
+            <body><div class="container"><div class="message error">❌ Las contraseñas no coinciden</div><div class="link"><a href="/registro">Volver</a></div></div></body>
+            </html>
+            '''
         
-        if result > 0:
-            flash('✅ Usuario insertado correctamente', 'success')
-        else:
-            flash('❌ Error al insertar usuario', 'danger')
-        
-        return redirect(url_for('mysql_listar_usuarios'))
+        password_hash = generate_password_hash(password)
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO usuarios (nombre, email, password) VALUES (%s, %s, %s)", (nombre, email, password_hash))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Registro Exitoso</title>{CSS}</head>
+            <body><div class="container"><div class="message success">✅ Registro exitoso!</div><div class="link"><a href="/login">Iniciar Sesión</a></div></div></body>
+            </html>
+            '''
+        except Exception as e:
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Error</title>{CSS}</head>
+            <body><div class="container"><div class="message error">❌ Error: {e}</div><div class="link"><a href="/registro">Volver</a></div></div></body>
+            </html>
+            '''
     
-    return render_template('mysql_usuario_form.html', accion='Nuevo Usuario')
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head><title>Registro</title>{CSS}</head>
+    <body>
+        <div class="container">
+            <h2>📝 Registro de Usuario</h2>
+            <form method="POST">
+                <div class="form-group"><label>Nombre completo</label><input type="text" name="nombre" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" name="password" required></div>
+                <div class="form-group"><label>Confirmar contraseña</label><input type="password" name="confirm_password" required></div>
+                <button type="submit">Registrarse</button>
+            </form>
+            <div class="link">¿Ya tienes cuenta? <a href="/login">Inicia sesión aquí</a></div>
+        </div>
+    </body>
+    </html>
+    '''
 
-@app.route('/mysql/usuarios/editar/<int:id>', methods=['GET', 'POST'])
-@login_required
-def mysql_editar_usuario(id):
-    """Modificar usuario (protegido)"""
-    db_mysql = get_db()
-    
+# LOGIN
+@app.route('/login', methods=['GET', 'POST'])
+def login():
     if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        mail = request.form.get('mail')
+        email = request.form.get('email')
         password = request.form.get('password')
-        
-        query = "UPDATE usuarios SET nombre=%s, mail=%s, password=%s WHERE id_usuario=%s"
-        result = db_mysql.execute_query(query, (nombre, mail, password, id))
-        
-        if result > 0:
-            flash('✅ Usuario actualizado correctamente', 'success')
-        else:
-            flash('❌ Error al actualizar usuario', 'danger')
-        
-        return redirect(url_for('mysql_listar_usuarios'))
+        try:
+            conn = get_db()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM usuarios WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if user and check_password_hash(user['password'], password):
+                usuario = Usuario(user['id'], user['nombre'], user['email'], user['password'])
+                login_user(usuario)
+                return redirect(url_for('index'))
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Error</title>{CSS}</head>
+            <body><div class="container"><div class="message error">❌ Credenciales incorrectas</div><div class="link"><a href="/login">Volver</a></div></div></body>
+            </html>
+            '''
+        except Exception as e:
+            return f'Error: {e}'
     
-    usuario = db_mysql.fetch_one("SELECT * FROM usuarios WHERE id_usuario = %s", (id,))
-    if not usuario:
-        flash('❌ Usuario no encontrado', 'danger')
-        return redirect(url_for('mysql_listar_usuarios'))
-    
-    return render_template('mysql_usuario_form.html', usuario=usuario, accion='Editar Usuario')
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head><title>Login</title>{CSS}</head>
+    <body>
+        <div class="container">
+            <h2>🔐 Iniciar Sesión</h2>
+            <form method="POST">
+                <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" name="password" required></div>
+                <button type="submit">Ingresar</button>
+            </form>
+            <div class="link">¿No tienes cuenta? <a href="/registro">Regístrate aquí</a></div>
+        </div>
+    </body>
+    </html>
+    '''
 
-@app.route('/mysql/usuarios/eliminar/<int:id>')
+@app.route('/logout')
 @login_required
-def mysql_eliminar_usuario(id):
-    """Eliminar usuario (protegido)"""
-    db_mysql = get_db()
-    result = db_mysql.execute_query("DELETE FROM usuarios WHERE id_usuario = %s", (id,))
-    
-    if result > 0:
-        flash('✅ Usuario eliminado correctamente', 'success')
-    else:
-        flash('❌ Error al eliminar usuario', 'danger')
-    
-    return redirect(url_for('mysql_listar_usuarios'))
-
-# ---------- CRUD PARA PACIENTES (protegido) ----------
-
-@app.route('/mysql/pacientes')
-@login_required
-def mysql_listar_pacientes():
-    """Listar todos los pacientes (protegido)"""
-    db_mysql = get_db()
-    pacientes = db_mysql.fetch_all("SELECT * FROM pacientes ORDER BY id DESC")
-    return render_template('mysql_pacientes.html', pacientes=pacientes)
-
-@app.route('/mysql/pacientes/nuevo', methods=['GET', 'POST'])
-@login_required
-def mysql_nuevo_paciente():
-    """Insertar nuevo paciente (protegido)"""
-    if request.method == 'POST':
-        datos = (
-            request.form.get('cedula'),
-            request.form.get('nombre'),
-            request.form.get('apellido'),
-            request.form.get('fecha_nacimiento') or None,
-            request.form.get('telefono'),
-            request.form.get('direccion'),
-            request.form.get('email')
-        )
-        
-        db_mysql = get_db()
-        query = """INSERT INTO pacientes 
-                  (cedula, nombre, apellido, fecha_nacimiento, telefono, direccion, email) 
-                  VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Paciente insertado correctamente', 'success')
-        else:
-            flash('❌ Error al insertar paciente', 'danger')
-        
-        return redirect(url_for('mysql_listar_pacientes'))
-    
-    return render_template('mysql_paciente_form.html', accion='Nuevo Paciente')
-
-@app.route('/mysql/pacientes/editar/<int:id>', methods=['GET', 'POST'])
-@login_required
-def mysql_editar_paciente(id):
-    """Modificar paciente (protegido)"""
-    db_mysql = get_db()
-    
-    if request.method == 'POST':
-        datos = (
-            request.form.get('cedula'),
-            request.form.get('nombre'),
-            request.form.get('apellido'),
-            request.form.get('fecha_nacimiento') or None,
-            request.form.get('telefono'),
-            request.form.get('direccion'),
-            request.form.get('email'),
-            id
-        )
-        
-        query = """UPDATE pacientes 
-                  SET cedula=%s, nombre=%s, apellido=%s, fecha_nacimiento=%s, 
-                      telefono=%s, direccion=%s, email=%s 
-                  WHERE id=%s"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Paciente actualizado correctamente', 'success')
-        else:
-            flash('❌ Error al actualizar paciente', 'danger')
-        
-        return redirect(url_for('mysql_listar_pacientes'))
-    
-    paciente = db_mysql.fetch_one("SELECT * FROM pacientes WHERE id = %s", (id,))
-    if not paciente:
-        flash('❌ Paciente no encontrado', 'danger')
-        return redirect(url_for('mysql_listar_pacientes'))
-    
-    return render_template('mysql_paciente_form.html', paciente=paciente, accion='Editar Paciente')
-
-@app.route('/mysql/pacientes/eliminar/<int:id>')
-@login_required
-def mysql_eliminar_paciente(id):
-    """Eliminar paciente (protegido)"""
-    db_mysql = get_db()
-    result = db_mysql.execute_query("DELETE FROM pacientes WHERE id = %s", (id,))
-    
-    if result > 0:
-        flash('✅ Paciente eliminado correctamente', 'success')
-    else:
-        flash('❌ Error al eliminar paciente', 'danger')
-    
-    return redirect(url_for('mysql_listar_pacientes'))
-
-# ---------- CRUD PARA MÉDICOS (protegido) ----------
-
-@app.route('/mysql/medicos')
-@login_required
-def mysql_listar_medicos():
-    """Listar todos los médicos (protegido)"""
-    db_mysql = get_db()
-    medicos = db_mysql.fetch_all("SELECT * FROM medicos ORDER BY id DESC")
-    return render_template('mysql_medicos.html', medicos=medicos)
-
-@app.route('/mysql/medicos/nuevo', methods=['GET', 'POST'])
-@login_required
-def mysql_nuevo_medico():
-    """Insertar nuevo médico (protegido)"""
-    if request.method == 'POST':
-        datos = (
-            request.form.get('cedula'),
-            request.form.get('nombre'),
-            request.form.get('apellido'),
-            request.form.get('especialidad'),
-            request.form.get('telefono'),
-            request.form.get('email')
-        )
-        
-        db_mysql = get_db()
-        query = """INSERT INTO medicos 
-                  (cedula, nombre, apellido, especialidad, telefono, email) 
-                  VALUES (%s, %s, %s, %s, %s, %s)"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Médico insertado correctamente', 'success')
-        else:
-            flash('❌ Error al insertar médico', 'danger')
-        
-        return redirect(url_for('mysql_listar_medicos'))
-    
-    return render_template('mysql_medico_form.html', accion='Nuevo Médico')
-
-@app.route('/mysql/medicos/editar/<int:id>', methods=['GET', 'POST'])
-@login_required
-def mysql_editar_medico(id):
-    """Modificar médico (protegido)"""
-    db_mysql = get_db()
-    
-    if request.method == 'POST':
-        datos = (
-            request.form.get('cedula'),
-            request.form.get('nombre'),
-            request.form.get('apellido'),
-            request.form.get('especialidad'),
-            request.form.get('telefono'),
-            request.form.get('email'),
-            id
-        )
-        
-        query = """UPDATE medicos 
-                  SET cedula=%s, nombre=%s, apellido=%s, especialidad=%s, 
-                      telefono=%s, email=%s 
-                  WHERE id=%s"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Médico actualizado correctamente', 'success')
-        else:
-            flash('❌ Error al actualizar médico', 'danger')
-        
-        return redirect(url_for('mysql_listar_medicos'))
-    
-    medico = db_mysql.fetch_one("SELECT * FROM medicos WHERE id = %s", (id,))
-    if not medico:
-        flash('❌ Médico no encontrado', 'danger')
-        return redirect(url_for('mysql_listar_medicos'))
-    
-    return render_template('mysql_medico_form.html', medico=medico, accion='Editar Médico')
-
-@app.route('/mysql/medicos/eliminar/<int:id>')
-@login_required
-def mysql_eliminar_medico(id):
-    """Eliminar médico (protegido)"""
-    db_mysql = get_db()
-    result = db_mysql.execute_query("DELETE FROM medicos WHERE id = %s", (id,))
-    
-    if result > 0:
-        flash('✅ Médico eliminado correctamente', 'success')
-    else:
-        flash('❌ Error al eliminar médico', 'danger')
-    
-    return redirect(url_for('mysql_listar_medicos'))
-
-# ---------- CRUD PARA TURNOS (protegido) ----------
-
-@app.route('/mysql/turnos')
-@login_required
-def mysql_listar_turnos():
-    """Listar todos los turnos con información relacionada (protegido)"""
-    db_mysql = get_db()
-    query = """
-        SELECT t.*, 
-               p.nombre as paciente_nombre, p.apellido as paciente_apellido,
-               m.nombre as medico_nombre, m.apellido as medico_apellido, m.especialidad
-        FROM turnos t
-        JOIN pacientes p ON t.paciente_id = p.id
-        JOIN medicos m ON t.medico_id = m.id
-        ORDER BY t.fecha DESC, t.hora DESC
-    """
-    turnos = db_mysql.fetch_all(query)
-    return render_template('mysql_turnos.html', turnos=turnos)
-
-@app.route('/mysql/turnos/nuevo', methods=['GET', 'POST'])
-@login_required
-def mysql_nuevo_turno():
-    """Insertar nuevo turno (protegido)"""
-    db_mysql = get_db()
-    
-    if request.method == 'POST':
-        datos = (
-            request.form.get('paciente_id'),
-            request.form.get('medico_id'),
-            request.form.get('fecha'),
-            request.form.get('hora'),
-            request.form.get('motivo'),
-            request.form.get('estado', 'Programado')
-        )
-        
-        query = """INSERT INTO turnos 
-                  (paciente_id, medico_id, fecha, hora, motivo, estado) 
-                  VALUES (%s, %s, %s, %s, %s, %s)"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Turno insertado correctamente', 'success')
-        else:
-            flash('❌ Error al insertar turno', 'danger')
-        
-        return redirect(url_for('mysql_listar_turnos'))
-    
-    pacientes = db_mysql.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
-    medicos = db_mysql.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
-    
-    return render_template('mysql_turno_form.html', 
-                          pacientes=pacientes, 
-                          medicos=medicos, 
-                          accion='Nuevo Turno')
-
-@app.route('/mysql/turnos/editar/<int:id>', methods=['GET', 'POST'])
-@login_required
-def mysql_editar_turno(id):
-    """Modificar turno (protegido)"""
-    db_mysql = get_db()
-    
-    if request.method == 'POST':
-        datos = (
-            request.form.get('paciente_id'),
-            request.form.get('medico_id'),
-            request.form.get('fecha'),
-            request.form.get('hora'),
-            request.form.get('motivo'),
-            request.form.get('estado'),
-            id
-        )
-        
-        query = """UPDATE turnos 
-                  SET paciente_id=%s, medico_id=%s, fecha=%s, hora=%s, motivo=%s, estado=%s 
-                  WHERE id=%s"""
-        result = db_mysql.execute_query(query, datos)
-        
-        if result > 0:
-            flash('✅ Turno actualizado correctamente', 'success')
-        else:
-            flash('❌ Error al actualizar turno', 'danger')
-        
-        return redirect(url_for('mysql_listar_turnos'))
-    
-    turno = db_mysql.fetch_one("SELECT * FROM turnos WHERE id = %s", (id,))
-    if not turno:
-        flash('❌ Turno no encontrado', 'danger')
-        return redirect(url_for('mysql_listar_turnos'))
-    
-    pacientes = db_mysql.fetch_all("SELECT id, cedula, nombre, apellido FROM pacientes ORDER BY apellido")
-    medicos = db_mysql.fetch_all("SELECT id, nombre, apellido, especialidad FROM medicos ORDER BY apellido")
-    
-    return render_template('mysql_turno_form.html', 
-                          turno=turno,
-                          pacientes=pacientes, 
-                          medicos=medicos, 
-                          accion='Editar Turno')
-
-@app.route('/mysql/turnos/eliminar/<int:id>')
-@login_required
-def mysql_eliminar_turno(id):
-    """Eliminar turno (protegido)"""
-    db_mysql = get_db()
-    result = db_mysql.execute_query("DELETE FROM turnos WHERE id = %s", (id,))
-    
-    if result > 0:
-        flash('✅ Turno eliminado correctamente', 'success')
-    else:
-        flash('❌ Error al eliminar turno', 'danger')
-    
-    return redirect(url_for('mysql_listar_turnos'))
-
-# ============================================
-# INICIO DE LA APLICACIÓN
-# ============================================
+def logout():
+    logout_user()
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head><title>Sesión Cerrada</title>{CSS}</head>
+    <body><div class="container"><div class="message success">✅ Sesión cerrada correctamente</div><div class="link"><a href="/">Volver al inicio</a></div></div></body>
+    </html>
+    '''
 
 if __name__ == '__main__':
     app.run(debug=True)

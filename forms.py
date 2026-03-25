@@ -1,5 +1,5 @@
 ﻿# forms.py
-# Formularios para autenticación de usuarios
+# Formularios para autenticación
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField

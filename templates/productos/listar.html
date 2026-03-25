@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Productos - Patronato de Catacocha{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="text-center mb-4">
+            <i class="fas fa-boxes me-3"></i>Gestión de Productos
+        </h1>
+        <hr class="mb-4">
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <a href="{{ url_for('producto_crear') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nuevo Producto
+        </a>
+        <a href="{{ url_for('reporte_productos_pdf') }}" class="btn btn-danger">
+            <i class="fas fa-file-pdf me-2"></i>Generar PDF
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Lista de Productos</h5>
+            </div>
+            <div class="card-body">
+                {% if productos %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Acciones</th>
+                            </thead>
+                        <tbody>
+                            {% for producto in productos %}
+                            <tr>
+                                <td>{{ producto.id_producto }}</td>
+                                <td><strong>{{ producto.nombre }}</strong></td>
+                                <td>{{ producto.descripcion or '' }}</td>
+                                <td>${{ "%.2f"|format(producto.precio) }}</td>
+                                <td>
+                                    <span class="badge {% if producto.stock > 10 %}bg-success{% elif producto.stock > 0 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ producto.stock }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('producto_editar', id=producto.id_producto) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('producto_eliminar', id=producto.id_producto) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar este producto?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                    <h4>No hay productos registrados</h4>
+                    <p>Haz clic en "Nuevo Producto" para comenzar.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
